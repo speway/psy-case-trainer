@@ -1,0 +1,17 @@
+{
+  "name": "Тренажёр профессионального мышления психолога",
+  "short_name": "Тренажёр психолога",
+  "description": "Учебная площадка с психологическими кейсами и объяснимой обратной связью.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3efe6",
+  "theme_color": "#17332d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
