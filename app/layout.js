@@ -32,7 +32,7 @@ export const metadata = {
       "Учебные психологические кейсы, методика КАРТА, разбор ошибок и профессиональные источники.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og-preview.png",
         width: 1200,
         height: 630,
         alt: "Тренажёр психолога — учебная площадка Научного сектора психологии ТФ МГУ",
@@ -44,7 +44,7 @@ export const metadata = {
     title: "Тренажёр психолога",
     description:
       "Учебные психологические кейсы, методика КАРТА, разбор ошибок и профессиональные источники.",
-    images: ["/opengraph-image"],
+    images: ["/og-preview.png"],
   },
   manifest: "/manifest.webmanifest",
   icons: {
