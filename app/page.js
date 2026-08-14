@@ -2347,6 +2347,15 @@ export default function Page() {
       window.scrollTo({ top: 0, behavior: "auto" });
     }, [j, w, u]),
     (0, i.useEffect)(() => {
+      if (!window.matchMedia("(max-width: 760px)").matches) return;
+      let e = window.requestAnimationFrame(() => {
+        document
+          .querySelector(".site-header nav button.active")
+          ?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+      });
+      return () => window.cancelAnimationFrame(e);
+    }, [j]),
+    (0, i.useEffect)(() => {
       if ("practice" === j && v.some((e) => e.trim()))
         try {
           window.localStorage.setItem(

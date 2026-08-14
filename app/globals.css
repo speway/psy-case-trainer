@@ -3938,3 +3938,695 @@ blockquote {
   syntax: "*";
   inherits: false;
 }
+
+/* Final responsive layer: phone-safe layout across 320-760px widths. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.site-header > *,
+.site-header nav,
+.hero-frame > *,
+.section-hub button > *,
+.case-card > *,
+.case-intro-grid > *,
+.practice-page > *,
+.result-body > *,
+.profile-grid > *,
+.knowledge-grid > *,
+.source-list > a > *,
+.footer-brand,
+.footer-meta {
+  min-width: 0;
+}
+
+.brand > span:last-child,
+.section-hub button > div,
+.catalog-support > div,
+.knowledge-footer > div,
+.result-sources a > *,
+.attempt-row > * {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --mobile-gutter: max(16px, env(safe-area-inset-left));
+    --mobile-gutter-right: max(16px, env(safe-area-inset-right));
+  }
+
+  body {
+    font-size: 16px;
+    line-height: 1.58;
+  }
+
+  h1,
+  h2,
+  h3 {
+    overflow-wrap: break-word;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+  }
+
+  button,
+  a,
+  summary,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .site-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    min-height: auto;
+    padding: 9px var(--mobile-gutter-right) 7px var(--mobile-gutter);
+  }
+
+  .site-header .brand-button {
+    grid-area: auto;
+    max-width: 100%;
+  }
+
+  .brand {
+    width: auto;
+    max-width: 100%;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brand b {
+    max-width: none;
+    font-size: 11px;
+    line-height: 1.28;
+  }
+
+  .brand small {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .header-cta {
+    display: none;
+  }
+
+  .site-header nav {
+    order: 3;
+    grid-column: 1;
+    justify-self: stretch;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+    gap: 4px;
+    padding: 2px 0 5px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 12px;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: none;
+  }
+
+  .site-header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header nav button {
+    flex: none;
+    min-height: 44px;
+    padding: 10px 13px;
+    font-size: 12px;
+    scroll-snap-align: center;
+    white-space: nowrap;
+  }
+
+  .hero {
+    padding: 24px var(--mobile-gutter-right) 32px var(--mobile-gutter);
+  }
+
+  .hero-frame {
+    min-height: auto;
+    padding: 32px 20px 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(40px, 12.5vw, 54px);
+    line-height: 1;
+  }
+
+  .hero-copy > p {
+    font-size: 16px;
+    line-height: 1.68;
+  }
+
+  .hero-index {
+    position: relative;
+    inset: auto;
+    justify-self: end;
+    width: min(144px, 100%);
+    margin-top: 28px;
+  }
+
+  .hero-psi {
+    right: -58px;
+    font-size: 230px;
+  }
+
+  .eyebrow {
+    width: fit-content;
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1.45;
+    white-space: normal;
+  }
+
+  .hero-actions,
+  .home-start > div:last-child {
+    width: 100%;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .case-card > button,
+  .knowledge-card > button,
+  .competency-card button {
+    min-height: 48px;
+    white-space: normal;
+  }
+
+  .principles-strip,
+  .method-section,
+  .guide-teaser,
+  .home-sections,
+  .home-start {
+    width: calc(100% - var(--mobile-gutter) - var(--mobile-gutter-right));
+  }
+
+  .home-sections-heading h2,
+  .section-heading h2,
+  .profile-heading h1,
+  .sources-hero h1 {
+    font-size: clamp(38px, 11.8vw, 48px);
+  }
+
+  .section-hub button,
+  .section-hub button:first-child {
+    grid-template-columns: 30px minmax(0, 1fr) 18px;
+    gap: 12px;
+    min-height: 0;
+    padding: 21px 18px;
+  }
+
+  .section-hub button b,
+  .section-hub button:first-child b {
+    font-size: clamp(28px, 9vw, 36px);
+  }
+
+  .section-hub button p {
+    margin: 12px 0 22px;
+    font-size: 15px;
+  }
+
+  .home-start {
+    margin-bottom: 64px;
+    padding: 28px 20px;
+  }
+
+  .home-start h2,
+  .catalog-support h2,
+  .knowledge-footer h2 {
+    font-size: clamp(31px, 9.5vw, 40px);
+  }
+
+  .page-hero {
+    padding: 48px var(--mobile-gutter-right) 46px var(--mobile-gutter);
+  }
+
+  .page-hero h1 {
+    font-size: clamp(42px, 13vw, 58px);
+    line-height: 0.98;
+  }
+
+  .page-hero-stats span {
+    gap: 12px;
+    min-height: 64px;
+  }
+
+  .catalog-content {
+    padding-right: var(--mobile-gutter-right);
+    padding-left: var(--mobile-gutter);
+  }
+
+  .filter-row,
+  .source-filter,
+  .case-tags,
+  .competency-chips,
+  .topic-terms {
+    align-items: stretch;
+  }
+
+  .filter-row button,
+  .source-filter button {
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .case-card {
+    min-height: 0;
+    padding: 21px 19px;
+  }
+
+  .case-topline {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .case-sigil {
+    height: 62px;
+  }
+
+  .case-card h3 {
+    max-width: none;
+    font-size: clamp(25px, 8.5vw, 31px);
+  }
+
+  .case-meta span,
+  .case-tags span,
+  .rubric-list span,
+  .rubric-list em,
+  .competency-chips span,
+  .topic-terms span,
+  .question-count,
+  .progress-summary > b,
+  .score-orbit span {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
+  .catalog-support,
+  .knowledge-footer {
+    padding: 22px 20px;
+  }
+
+  .case-intro-page {
+    padding: 26px var(--mobile-gutter-right) 72px var(--mobile-gutter);
+  }
+
+  .case-intro-head {
+    align-items: center;
+    gap: 14px;
+  }
+
+  .case-index-big {
+    flex: none;
+    font-size: 32px;
+  }
+
+  .case-intro-main > h1 {
+    font-size: clamp(39px, 12vw, 54px);
+    line-height: 1;
+  }
+
+  .brief-block,
+  .case-intro-aside,
+  .topic-guide-head,
+  .topic-guide-grid article,
+  .topic-terms {
+    padding-right: 19px;
+    padding-left: 19px;
+  }
+
+  .brief-block blockquote {
+    margin-right: 0;
+    margin-left: 0;
+    padding: 16px;
+    font-size: 18px;
+  }
+
+  .case-provenance a {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .rubric-list div {
+    grid-template-columns: 25px minmax(0, 1fr) auto;
+  }
+
+  .practice-page,
+  .practice-sidebar {
+    min-height: auto;
+  }
+
+  .practice-sidebar {
+    padding: 13px var(--mobile-gutter-right) 15px var(--mobile-gutter);
+  }
+
+  .practice-sidebar ol {
+    grid-template-columns: repeat(5, minmax(44px, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .practice-sidebar li button {
+    min-height: 46px;
+  }
+
+  .progress-summary {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+
+  .question-workspace {
+    padding: 34px var(--mobile-gutter-right) 64px var(--mobile-gutter);
+  }
+
+  .question-workspace h1 {
+    font-size: clamp(34px, 10.5vw, 45px);
+  }
+
+  .question-prompt {
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .textarea-wrap textarea {
+    min-height: min(54svh, 430px);
+    padding: 17px 16px 42px;
+    font-size: 16px;
+  }
+
+  .question-actions {
+    gap: 10px;
+  }
+
+  .result-hero {
+    gap: 30px;
+    padding: 44px var(--mobile-gutter-right) 46px var(--mobile-gutter);
+  }
+
+  .result-hero h1 {
+    font-size: clamp(43px, 13vw, 58px);
+  }
+
+  .score-orbit {
+    width: 148px;
+    height: 148px;
+  }
+
+  .score-orbit > div {
+    padding-top: 44px;
+  }
+
+  .score-orbit b {
+    font-size: 45px;
+  }
+
+  .result-body {
+    padding: 34px var(--mobile-gutter-right) 72px var(--mobile-gutter);
+  }
+
+  .result-card,
+  .critical-panel,
+  .next-training-card,
+  .result-sources,
+  .aside-card {
+    padding: 20px 18px;
+  }
+
+  .dimension-list > div > div:first-child,
+  .panel-title,
+  .model-answer summary {
+    align-items: flex-start;
+  }
+
+  .result-sources a {
+    grid-template-columns: minmax(0, 1fr) 22px;
+    gap: 4px 10px;
+  }
+
+  .result-sources a b,
+  .result-sources a span {
+    grid-column: 1;
+  }
+
+  .result-sources a i {
+    grid-area: 1 / 2 / 3 / 3;
+    align-self: center;
+    justify-self: end;
+  }
+
+  .profile-page,
+  .sources-page,
+  .guide-page {
+    padding-right: var(--mobile-gutter-right);
+    padding-left: var(--mobile-gutter);
+  }
+
+  .attempt-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title score"
+      "date status";
+    gap: 8px 12px;
+    padding: 16px 18px;
+  }
+
+  .attempt-row > b {
+    grid-area: title;
+    overflow-wrap: break-word;
+  }
+
+  .attempt-row > span {
+    grid-area: date;
+  }
+
+  .attempt-row > em {
+    grid-area: score;
+    justify-self: end;
+  }
+
+  .attempt-row > i {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .sources-hero::after {
+    right: -42px;
+  }
+
+  .source-filter {
+    margin-top: 20px;
+  }
+
+  .source-list > a {
+    grid-template-columns: 32px minmax(0, 1fr) 22px;
+    gap: 12px;
+  }
+
+  .source-list h2 {
+    overflow-wrap: break-word;
+    font-size: 18px;
+  }
+
+  .source-list small {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+
+  .guide-hero h1 {
+    font-size: clamp(38px, 12vw, 52px);
+  }
+
+  .method-section {
+    padding: 42px 20px;
+  }
+
+  .method-title h2,
+  .karta-title h2,
+  .tips-heading h2 {
+    font-size: clamp(34px, 10.5vw, 44px);
+  }
+
+  .karta-board,
+  .guide-card,
+  .answer-comparison article,
+  .guide-cta {
+    padding-right: 19px;
+    padding-left: 19px;
+  }
+
+  .knowledge-grid {
+    padding-right: var(--mobile-gutter-right);
+    padding-left: var(--mobile-gutter);
+  }
+
+  .knowledge-card {
+    padding: 21px 19px;
+  }
+
+  .knowledge-card-head,
+  .knowledge-card details summary {
+    flex-wrap: wrap;
+  }
+
+  .knowledge-card-head em {
+    text-align: left;
+  }
+
+  .knowledge-card h2 {
+    font-size: clamp(29px, 9.4vw, 37px);
+  }
+
+  footer {
+    gap: 24px;
+    padding: 30px var(--mobile-gutter-right)
+      max(30px, env(safe-area-inset-bottom)) var(--mobile-gutter);
+  }
+
+  .footer-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .footer-meta > span[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  :root {
+    --mobile-gutter: max(12px, env(safe-area-inset-left));
+    --mobile-gutter-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .site-header {
+    padding-top: 8px;
+  }
+
+  .brand b {
+    font-size: 10px;
+  }
+
+  .brand small {
+    font-size: 9px;
+  }
+
+  .site-header nav button {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
+  .hero-frame,
+  .case-card,
+  .knowledge-card {
+    border-radius: 12px;
+  }
+
+  .hero-frame {
+    padding-right: 17px;
+    padding-left: 17px;
+  }
+
+  .hero h1,
+  .page-hero h1,
+  .result-hero h1 {
+    font-size: clamp(38px, 12.5vw, 47px);
+  }
+
+  .home-sections-heading h2,
+  .section-heading h2,
+  .profile-heading h1,
+  .sources-hero h1 {
+    font-size: 38px;
+  }
+
+  .section-hub button,
+  .section-hub button:first-child {
+    grid-template-columns: 26px minmax(0, 1fr) 16px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .case-intro-main > h1 {
+    font-size: 38px;
+  }
+
+  .rubric-list div {
+    grid-template-columns: 23px minmax(0, 1fr);
+  }
+
+  .rubric-list em {
+    grid-column: 2;
+  }
+
+  .question-workspace h1 {
+    font-size: 34px;
+  }
+
+  .source-list > a {
+    grid-template-columns: minmax(0, 1fr) 20px;
+  }
+
+  .source-number {
+    display: none;
+  }
+
+  .source-list > a > div {
+    grid-column: 1;
+  }
+
+  .source-list > a > i {
+    grid-column: 2;
+  }
+
+  .profile-stats > div {
+    min-height: 88px;
+  }
+
+  .profile-stats b {
+    font-size: 36px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 960px) {
+  .site-header {
+    position: relative;
+    grid-template-columns: minmax(150px, 0.55fr) minmax(0, 1fr);
+    gap: 14px;
+    min-height: 64px;
+  }
+
+  .site-header .header-cta,
+  .brand small {
+    display: none;
+  }
+
+  .site-header nav {
+    grid-area: 1 / 2;
+    justify-self: stretch;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header nav button {
+    flex: none;
+    min-height: 42px;
+    white-space: nowrap;
+  }
+
+  .practice-sidebar {
+    position: relative;
+    top: auto;
+  }
+}
