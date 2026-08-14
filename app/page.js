@@ -2281,6 +2281,20 @@ let n = [
     "Хороший план содержит развилки: «если риск непосредственный — …; если риск неострый — …».",
     "Не обещайте результат метода и не называйте перенаправление отказом: это часть ответственной помощи.",
   ];
+
+const questionCounts = a.map((caseItem) => caseItem.questions.length),
+  platformStats = Object.freeze({
+    cases: a.length,
+    topics: Object.keys(l).length,
+    sources: n.length,
+    methodSteps: r.length,
+    totalQuestions: questionCounts.reduce((sum, count) => sum + count, 0),
+    questionsPerCase:
+      Math.min(...questionCounts) === Math.max(...questionCounts)
+        ? String(questionCounts[0])
+        : `${Math.min(...questionCounts)}–${Math.max(...questionCounts)}`,
+  });
+
 function d() {
   return (0, s.jsxs)("span", {
     className: "brand",
@@ -2626,7 +2640,7 @@ export default function Page() {
                       children: [
                         (0, s.jsx)("span", { children: "ЛАБ." }),
                         (0, s.jsx)("b", {
-                          children: String(a.length).padStart(2, "0"),
+                          children: String(platformStats.cases).padStart(2, "0"),
                         }),
                         (0, s.jsx)("small", { children: "КЕЙСОВ" }),
                       ],
@@ -2711,12 +2725,19 @@ export default function Page() {
                         (0, s.jsxs)("div", {
                           children: [
                             (0, s.jsx)("b", { children: "Кейсы" }),
-                            (0, s.jsx)("p", {
-                              children:
-                                "Десять учебных ситуаций с фильтрами по теме и сложности.",
+                            (0, s.jsxs)("p", {
+                              children: [
+                                platformStats.cases,
+                                " учебных ситуаций с фильтрами по теме и сложности.",
+                              ],
                             }),
                             (0, s.jsxs)("small", {
-                              children: [a.length, " кейсов · практика"],
+                              children: [
+                                platformStats.cases,
+                                " кейсов · ",
+                                platformStats.totalQuestions,
+                                " заданий",
+                              ],
                             }),
                           ],
                         }),
@@ -2734,8 +2755,11 @@ export default function Page() {
                               children:
                                 "Метод КАРТА, правила сильного ответа и типичные ошибки.",
                             }),
-                            (0, s.jsx)("small", {
-                              children: "5 шагов · чек-лист",
+                            (0, s.jsxs)("small", {
+                              children: [
+                                platformStats.methodSteps,
+                                " шагов · чек-лист",
+                              ],
                             }),
                           ],
                         }),
@@ -2753,8 +2777,11 @@ export default function Page() {
                               children:
                                 "Краткие ориентиры по каждой теме без готовых решений.",
                             }),
-                            (0, s.jsx)("small", {
-                              children: "10 тем · ключевые понятия",
+                            (0, s.jsxs)("small", {
+                              children: [
+                                platformStats.topics,
+                                " тем · ключевые понятия",
+                              ],
                             }),
                           ],
                         }),
@@ -2774,7 +2801,7 @@ export default function Page() {
                             }),
                             (0, s.jsxs)("small", {
                               children: [
-                                n.length,
+                                platformStats.sources,
                                 " документов · открытый реестр",
                               ],
                             }),
@@ -2873,7 +2900,7 @@ export default function Page() {
                   children: [
                     (0, s.jsxs)("span", {
                       children: [
-                        (0, s.jsx)("b", { children: a.length }),
+                        (0, s.jsx)("b", { children: platformStats.cases }),
                         " кейсов",
                       ],
                     }),
@@ -2903,7 +2930,12 @@ export default function Page() {
                       children: [
                         (0, s.jsx)("b", { children: "Фильтр по теме" }),
                         (0, s.jsxs)("span", {
-                          children: ["Показано: ", T.length, " из ", a.length],
+                          children: [
+                            "Показано: ",
+                            T.length,
+                            " из ",
+                            platformStats.cases,
+                          ],
                         }),
                       ],
                     }),
@@ -3040,7 +3072,10 @@ export default function Page() {
                     U.index,
                     " ",
                     (0, s.jsxs)("span", {
-                      children: ["/ ", String(a.length).padStart(3, "0")],
+                      children: [
+                        "/ ",
+                        String(platformStats.cases).padStart(3, "0"),
+                      ],
                     }),
                   ],
                 }),
@@ -3877,7 +3912,7 @@ export default function Page() {
                       children: [
                         D,
                         (0, s.jsxs)("small", {
-                          children: ["/", a.length],
+                          children: ["/", platformStats.cases],
                         }),
                       ],
                     }),
@@ -4081,7 +4116,12 @@ export default function Page() {
                         (0, s.jsxs)("div", {
                           children: [
                             (0, s.jsx)("span", { children: "01" }),
-                            (0, s.jsx)("b", { children: "Пять заданий" }),
+                            (0, s.jsxs)("b", {
+                              children: [
+                                platformStats.questionsPerCase,
+                                " заданий в кейсе",
+                              ],
+                            }),
                             (0, s.jsx)("p", {
                               children:
                                 "Каждое задание проверяет отдельную профессиональную компетенцию.",
@@ -4625,7 +4665,7 @@ export default function Page() {
                 (0, s.jsxs)("button", {
                   className: "all" === R ? "selected" : "",
                   onClick: () => z("all"),
-                  children: ["Все источники · ", n.length],
+                  children: ["Все источники · ", platformStats.sources],
                 }),
                 (0, s.jsxs)("button", {
                   className: "ru" === R ? "selected" : "",
