@@ -2006,22 +2006,12 @@ export default function Page() {
                       Экзаменариум ГОС ↗
                     </a>
                   </li>
-                  <li>
-                    <a
-                      href="https://github.com/speway"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      GitHub @speway ↗
-                    </a>
-                  </li>
                 </ul>
               </div>
 
               <div>
-                <h3>Контакты и Telegram</h3>
+                <h3>Контакты</h3>
                 <div className="footer-contact">
-                  <p>100060, г. Ташкент, ул. Амира Темура, 22</p>
                   <div className="contact-links">
                     <a
                       href="https://t.me/psy_msutf"
@@ -2029,15 +2019,7 @@ export default function Page() {
                       rel="noopener noreferrer"
                       className="telegram-link"
                     >
-                      Канал: @psy_msutf ↗
-                    </a>
-                    <a
-                      href="https://t.me/speway"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="telegram-link"
-                    >
-                      Telegram: @speway ↗
+                      Telegram-канал: @psy_msutf ↗
                     </a>
                   </div>
                 </div>
@@ -2053,7 +2035,7 @@ export default function Page() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  spw (@speway)
+                  spw
                 </a>
               </span>
             </div>
