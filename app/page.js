@@ -1887,20 +1887,179 @@ export default function Page() {
         </section>
       )}
 
-      {/* Global Footer */}
-      <footer className="site-footer">
-        <div className="footer-content">
-          <div className="footer-left">
-            <b>Тренажёр для психологов</b>
-            <p>
-              Практикум решения психологических и организационных кейсов.
-            </p>
+      {/* Global Footer (TF MSU Ecosystem / Telegram / speway) */}
+      {tab !== "practice" && (
+        <footer id="contacts" className="site-footer">
+          <div className="footer-shell">
+            <div className="footer-brand-row">
+              <div className="footer-brand-mark" aria-hidden="true">
+                <span className="footer-psi">Ψ</span>
+              </div>
+              <div>
+                <h2>Тренажёр для психологов</h2>
+                <p>
+                  Практикум решения учебных, клинических и организационных кейсов, объективная рубрика проверки и научно-методические стандарты.
+                </p>
+              </div>
+              <span className="footer-edition">TF MSU / 2026</span>
+            </div>
+
+            <div className="footer-grid">
+              <div>
+                <h3>Разделы</h3>
+                <ul>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("catalog")}>
+                      Каталог кейсов ({cases.length})
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("guide")}>
+                      Методика КАРТА
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("knowledge")}>
+                      База знаний ({platformStats.topics} тем)
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("sources")}>
+                      Реестр источников ({sources.length})
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("profile")}>
+                      Личный профиль
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3>Практика</h3>
+                <ul>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDirection("org");
+                        setSelectedCategory("Все");
+                        navigateTo("catalog");
+                      }}
+                    >
+                      Оргпсихология ({orgCount})
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedDirection("clin");
+                        setSelectedCategory("Все");
+                        navigateTo("catalog");
+                      }}
+                    >
+                      Клиническая помощь ({clinCount})
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("guide")}>
+                      Чек-лист ответа
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" onClick={() => navigateTo("guide")}>
+                      Частые ошибки
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3>Экосистема проектов</h3>
+                <ul>
+                  <li>
+                    <a
+                      href="https://psy-msutf.vercel.app/ru"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Материалы ТФ МГУ ↗
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://psy-stat-lab.vercel.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      StatLab — статанализ ↗
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://gosy-vak-trainer.vercel.app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Экзаменариум ГОС ↗
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://github.com/speway"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      GitHub @speway ↗
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3>Контакты и Telegram</h3>
+                <div className="footer-contact">
+                  <p>100060, г. Ташкент, ул. Амира Темура, 22</p>
+                  <div className="contact-links">
+                    <a
+                      href="https://t.me/psy_msutf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="telegram-link"
+                    >
+                      Канал: @psy_msutf ↗
+                    </a>
+                    <a
+                      href="https://t.me/speway"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="telegram-link"
+                    >
+                      Telegram: @speway ↗
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="footer-bottom">
+              <span>© 2026 Тренажёр для психологов · ТФ МГУ</span>
+              <span>
+                by{" "}
+                <a
+                  href="https://t.me/speway"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  spw (@speway)
+                </a>
+              </span>
+            </div>
           </div>
-          <div className="footer-right">
-            <span>Всего кейсов: {cases.length} · Источников: {sources.length}</span>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </main>
   );
 }
