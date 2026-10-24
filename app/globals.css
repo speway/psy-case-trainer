@@ -3489,16 +3489,19 @@ body {
   max-width: 1240px;
   margin: 0 auto 26px;
 }
-.catalog-toolbar > div:first-child {
+.catalog-toolbar > div:first-child,
+.catalog-filter-header {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 16px;
   display: flex;
 }
-.catalog-toolbar > div:first-child b {
+.catalog-toolbar > div:first-child b,
+.catalog-filter-header b {
   font-size: 16px;
 }
-.catalog-toolbar > div:first-child span {
+.catalog-toolbar > div:first-child span,
+.catalog-filter-header span {
   color: var(--muted);
   font-size: 14px;
 }
@@ -3835,7 +3838,8 @@ blockquote {
   .catalog-content {
     padding: 32px 16px 0;
   }
-  .catalog-toolbar > div:first-child {
+  .catalog-toolbar > div:first-child,
+  .catalog-filter-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 5px;
@@ -4960,4 +4964,109 @@ body {
   border-radius: 999px;
   font: 600 11px var(--mono);
   color: var(--ink);
+}
+
+
+/* Direction Pills */
+.catalog-direction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.direction-pill {
+  padding: 8px 16px;
+  font: 600 12px var(--font-geist-sans);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.direction-pill:hover {
+  border-color: var(--muted);
+}
+.direction-pill.active-all {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.direction-pill.active-org {
+  background: #2d5a7b;
+  color: #fff;
+  border-color: #2d5a7b;
+}
+.direction-pill.active-clin {
+  background: var(--ochre);
+  color: #fff;
+  border-color: var(--ochre);
+}
+@media (max-width: 760px) {
+  .catalog-direction-bar {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .direction-pill {
+    padding: 7px 11px;
+    font-size: 11px;
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
+
+/* Practice Toolbox & Buttons */
+.practice-toolbox {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toolbox-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font: 600 11px var(--mono);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.toolbox-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+@media (max-width: 1080px) {
+  .practice-toolbox {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+}
+
+/* Card Heading Actions */
+.card-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.clear-history-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: 740 8px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.clear-history-btn:hover {
+  color: var(--terracotta);
 }

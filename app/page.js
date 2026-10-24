@@ -5,6 +5,43 @@ import { sources } from "./data/sources";
 import { cases } from "./data/cases";
 import { benchmarks } from "./data/benchmarks";
 
+const kartaSteps = [
+  {
+    letter: "К",
+    title: "Контекст и факты",
+    text: "Что известно буквально, от кого получены сведения и чего мы пока не знаем?",
+  },
+  {
+    letter: "А",
+    title: "Альтернативы",
+    text: "Какие 2–4 рабочие гипотезы объясняют данные и чем их можно различить?",
+  },
+  {
+    letter: "Р",
+    title: "Риски и ресурсы",
+    text: "Есть ли угроза жизни, насилие, риск синдрома отмены, психоз, люди в уязвимом положении и доступная поддержка?",
+  },
+  {
+    letter: "Т",
+    title: "Терапевтическая рамка",
+    text: "Кто клиент, в чём запрос, каковы границы конфиденциальности и вашей компетентности?",
+  },
+  {
+    letter: "А",
+    title: "Алгоритм действий",
+    text: "Что делать сначала, что после оценки и по каким признакам менять маршрут помощи?",
+  },
+];
+
+const guideTips = [
+  "Пишите «данные могут указывать на…», а не «у клиента точно…» — гипотеза должна оставаться проверяемой.",
+  "Если в кейсе есть фраза о смерти, самоповреждении или насилии, общая формулировка «оценить риск» слишком пустая: перечислите прямые вопросы.",
+  "Сначала безопасность и рамка, потом техника. Профессионализм часто виден именно по порядку действий.",
+  "Отдельно выписывайте слова клиента, наблюдения специалиста и сообщения третьих лиц — это данные разной надёжности.",
+  "Хороший план содержит развилки: «если риск непосредственный — …; если риск неострый — …».",
+  "Не обещайте результат метода и не называйте перенаправление отказом: это часть ответственной помощи.",
+];
+
 function BrandMark() {
   return (
     <span className="brand">
@@ -71,13 +108,21 @@ export default function Page() {
 
   const currentBenchmark = benchmarks[currentCase.id];
 
+  const orgCount = useMemo(() => cases.filter((c) => c.direction.includes("Организационн")).length, []);
+  const clinCount = useMemo(() => cases.filter((c) => !c.direction.includes("Организационн")).length, []);
+
   const platformStats = useMemo(() => {
+    const counts = cases.map((c) => c.questions.length);
     return {
       cases: cases.length,
-      totalQuestions: cases.reduce((acc, c) => acc + c.questions.length, 0),
-      methodSteps: 4,
-      topics: 12,
+      topics: Object.keys(benchmarks).length,
       sources: sources.length,
+      methodSteps: kartaSteps.length,
+      totalQuestions: counts.reduce((sum, n) => sum + n, 0),
+      questionsPerCase:
+        Math.min(...counts) === Math.max(...counts)
+          ? String(counts[0])
+          : `${Math.min(...counts)}–${Math.max(...counts)}`,
     };
   }, []);
 
@@ -310,7 +355,12 @@ export default function Page() {
           if (sig.test(ansLower)) matched++;
         });
       }
-      const ratio = q.signals && q.signals.length > 0 ? matched / q.signals.length : (ans.length >= 100 ? 1 : 0.5);
+      const ratio =
+        q.signals && q.signals.length > 0
+          ? matched / q.signals.length
+          : ans.length >= 100
+          ? 1
+          : 0.5;
       return {
         dimension: q.dimension || q.short || `Вопрос ${idx + 1}`,
         score: ans ? Math.round(ratio * q.max) : 0,
@@ -328,7 +378,7 @@ export default function Page() {
       .map((r) => r.message);
 
     const totalScore = questionScores.reduce((sum, q) => sum + q.score, 0);
-    const passed = totalScore >= 60 && criticalFlags.length === 0;
+    const passed = totalScore >= 65 && criticalFlags.length === 0;
 
     const dimensions = questionScores.map((q) => ({
       name: q.dimension,
@@ -337,16 +387,34 @@ export default function Page() {
       percent: q.max > 0 ? Math.round((q.score / q.max) * 100) : 0,
     }));
 
+    const strengthNotes = questionScores
+      .filter((q) => q.score / q.max >= 0.65 && q.note)
+      .map((q) => q.note);
+
+    const gapNotes = questionScores
+      .filter((q) => q.score / q.max < 0.65 && q.gap)
+      .map((q) => q.gap);
+
     const resultObj = {
       id: Date.now(),
       caseId: currentCase.id,
       caseTitle: currentCase.title,
       score: totalScore,
       passed,
-      date: new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+      date: new Intl.DateTimeFormat("ru-RU", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date()),
       dimensions,
       criticalFlags,
       questionScores,
+      strengths: strengthNotes.length
+        ? strengthNotes
+        : ["Вы начали структурировать ответ и обозначили собственную профессиональную позицию."],
+      gaps: gapNotes.length
+        ? gapNotes
+        : ["Сделайте итоговый ответ компактнее: оформите его как алгоритм для передачи коллеге или супервизору."],
       answers: [...answers],
     };
 
@@ -569,7 +637,7 @@ export default function Page() {
                 <h2 id="home-sections-title">Всё на своих местах</h2>
               </div>
               <p>
-                Выберите нужный блок. Клинические ситуации, оргдиагностика, методика и личные результаты теперь четко разделены.
+                Выберите нужный блок. Клинические ситуации, оргдиагностика, методика и личные результаты четко разделены.
               </p>
             </div>
 
@@ -585,7 +653,7 @@ export default function Page() {
                 <div>
                   <b>Организационная психология</b>
                   <p>27 кейсов: управление изменениями, выгорание, кранчи, оргкультура и ассессмент лидеров.</p>
-                  <small>27 кейсов · 101 задание</small>
+                  <small>{orgCount} кейсов · оргдиагностика</small>
                 </div>
                 <i>→</i>
               </button>
@@ -601,7 +669,7 @@ export default function Page() {
                 <div>
                   <b>Клиническое консультирование</b>
                   <p>10 кейсов: кризисная помощь, оценка рисков, ОКР, подростковое самоповреждение и аддикции.</p>
-                  <small>10 кейсов · 50 заданий</small>
+                  <small>{clinCount} кейсов · клиническая практика</small>
                 </div>
                 <i>→</i>
               </button>
@@ -611,7 +679,7 @@ export default function Page() {
                 <div>
                   <b>Как работать с кейсом</b>
                   <p>Метод КАРТА, правила сильного ответа и разбор типичных ошибок.</p>
-                  <small>4 шага · чек-лист</small>
+                  <small>5 шагов · чек-лист</small>
                 </div>
                 <i>→</i>
               </button>
@@ -621,7 +689,7 @@ export default function Page() {
                 <div>
                   <b>Источники и стандарты</b>
                   <p>33 официальных руководства ВОЗ, NICE, РПО, APA, ISO и CIPD.</p>
-                  <small>33 документа · открытые ссылки</small>
+                  <small>{sources.length} документа · открытые ссылки</small>
                 </div>
                 <i>→</i>
               </button>
@@ -632,7 +700,7 @@ export default function Page() {
             <div>
               <p className="kicker light">Быстрый старт</p>
               <h2>Готовы проверить себя на первом кейсе?</h2>
-              <p>Начните с учебной ситуации и пройдите все вопросы.</p>
+              <p>Начните с учебной ситуации и пройдите все задания.</p>
             </div>
             <div>
               <button
@@ -674,17 +742,10 @@ export default function Page() {
           <div className="catalog-content">
             <div className="catalog-toolbar">
               {/* Direction Tabs */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+              <div className="catalog-direction-bar">
                 <button
                   type="button"
-                  className="primary-button"
-                  style={{
-                    padding: "7px 14px",
-                    fontSize: "12px",
-                    background: selectedDirection === "all" ? "var(--ink)" : "var(--surface)",
-                    color: selectedDirection === "all" ? "var(--paper)" : "var(--ink)",
-                    borderColor: "var(--line)",
-                  }}
+                  className={`direction-pill ${selectedDirection === "all" ? "active-all" : ""}`}
                   onClick={() => {
                     setSelectedDirection("all");
                     setSelectedCategory("Все");
@@ -694,83 +755,54 @@ export default function Page() {
                 </button>
                 <button
                   type="button"
-                  className="primary-button"
-                  style={{
-                    padding: "7px 14px",
-                    fontSize: "12px",
-                    background: selectedDirection === "org" ? "#2d5a7b" : "var(--surface)",
-                    color: selectedDirection === "org" ? "#fff" : "var(--ink)",
-                    borderColor: "var(--line)",
-                  }}
+                  className={`direction-pill ${selectedDirection === "org" ? "active-org" : ""}`}
                   onClick={() => {
                     setSelectedDirection("org");
                     setSelectedCategory("Все");
                   }}
                 >
-                  Организационная психология (27)
+                  Организационная психология ({orgCount})
                 </button>
                 <button
                   type="button"
-                  className="primary-button"
-                  style={{
-                    padding: "7px 14px",
-                    fontSize: "12px",
-                    background: selectedDirection === "clin" ? "var(--ochre)" : "var(--surface)",
-                    color: selectedDirection === "clin" ? "#fff" : "var(--ink)",
-                    borderColor: "var(--line)",
-                  }}
+                  className={`direction-pill ${selectedDirection === "clin" ? "active-clin" : ""}`}
                   onClick={() => {
                     setSelectedDirection("clin");
                     setSelectedCategory("Все");
                   }}
                 >
-                  Клиническое консультирование (10)
+                  Клиническое консультирование ({clinCount})
                 </button>
               </div>
 
               {/* Search Box */}
-              <div style={{ position: "relative", marginBottom: "16px" }}>
+              <div className="catalog-search-wrap">
                 <input
                   type="text"
-                  placeholder="Поиск по названию, компании или компетенциям…"
+                  className="catalog-search-input"
+                  placeholder="Поиск по названию ситуации, компании или компетенциям…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 36px 10px 14px",
-                    border: "1px solid var(--line)",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--surface)",
-                    font: "500 13px var(--font-geist-sans)",
-                    color: "var(--ink)",
-                    outline: "none",
-                  }}
                 />
                 {searchQuery && (
                   <button
                     type="button"
+                    className="catalog-search-clear"
                     onClick={() => setSearchQuery("")}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--muted)",
-                    }}
+                    title="Очистить поиск"
                   >
                     ✕
                   </button>
                 )}
               </div>
 
-              <div>
+              {/* Filter Heading */}
+              <div className="catalog-filter-header">
                 <b>Фильтр по теме</b>
                 <span>Показано: {filteredCases.length} из {cases.length}</span>
               </div>
 
+              {/* Category Pills */}
               <div className="filter-row" aria-label="Фильтры каталога">
                 {categoriesForDirection.map((cat) => (
                   <button
@@ -1010,11 +1042,9 @@ export default function Page() {
               })}
             </ol>
 
-            {/* Quick Toolbox in Sidebar */}
-            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className="practice-toolbox">
               <div
                 className={`timer-pill ${timerSeconds < 300 ? "urgent" : ""}`}
-                style={{ width: "fit-content" }}
               >
                 <span>⏱ {formatTimer(timerSeconds)}</span>
                 <button
@@ -1039,34 +1069,17 @@ export default function Page() {
 
               <button
                 type="button"
-                style={{
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                  color: "#fff",
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  fontSize: "11px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
+                className="toolbox-btn"
                 onClick={() => setIsContextDrawerOpen(!isContextDrawerOpen)}
               >
-                📖 {isContextDrawerOpen ? "Скрыть факты кейса" : "Показать факты кейса"}
+                📖 {isContextDrawerOpen ? "Скрыть факты" : "Показать факты"}
               </button>
 
-              <div style={{ display: "flex", gap: "6px" }}>
+              <div style={{ display: "flex", gap: "6px", width: "100%" }}>
                 <button
                   type="button"
-                  style={{
-                    flex: 1,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    color: "#fff",
-                    padding: "6px",
-                    borderRadius: "4px",
-                    fontSize: "11px",
-                    cursor: "pointer",
-                  }}
+                  className="toolbox-btn"
+                  style={{ flex: 1 }}
                   onClick={copySolution}
                   title="Скопировать всё решение"
                 >
@@ -1074,16 +1087,8 @@ export default function Page() {
                 </button>
                 <button
                   type="button"
-                  style={{
-                    flex: 1,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    color: "#fff",
-                    padding: "6px",
-                    borderRadius: "4px",
-                    fontSize: "11px",
-                    cursor: "pointer",
-                  }}
+                  className="toolbox-btn"
+                  style={{ flex: 1 }}
                   onClick={downloadSolution}
                   title="Скачать решение как Markdown"
                 >
@@ -1152,7 +1157,8 @@ export default function Page() {
             </div>
 
             <div className="question-hint">
-              <b>Методический фокус:</b> {currentCase.questions[currentStep].hint}
+              <b>Методический фокус</b>
+              <p>{currentCase.questions[currentStep].hint}</p>
             </div>
 
             <div className="question-actions">
@@ -1231,17 +1237,16 @@ export default function Page() {
                 </div>
               )}
 
-              {/* Score Breakdown Bars */}
-              <div className="score-bars-card">
+              <div className="result-card">
                 <p className="kicker">Оценка по измерениям</p>
-                <div className="rubric-review">
+                <div className="dimension-list">
                   {evaluation.dimensions.map((dim, i) => (
-                    <div key={i} className="rubric-review-item">
+                    <div key={i}>
                       <div>
                         <b>{dim.name}</b>
-                        <span>{dim.score} из {dim.max}</span>
+                        <span>{dim.score} / {dim.max} ({dim.percent}%)</span>
                       </div>
-                      <div>
+                      <div className="dimension-bar">
                         <i style={{ width: `${dim.percent}%` }}></i>
                       </div>
                     </div>
@@ -1249,59 +1254,102 @@ export default function Page() {
                 </div>
               </div>
 
-              {/* Full Benchmark Review */}
+              <div className="feedback-grid">
+                <div className="result-card strengths">
+                  <p className="kicker">Сильные стороны</p>
+                  <ul>
+                    {evaluation.strengths.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="result-card gaps">
+                  <p className="kicker">Зоны роста</p>
+                  <ul>
+                    {evaluation.gaps.map((g, i) => (
+                      <li key={i}>{g}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
               {currentBenchmark && (
-                <div className="benchmark-card" style={{ marginTop: "24px" }}>
-                  <p className="kicker">Эталонный разбор</p>
-                  <h2>Ориентир решения от эксперта</h2>
-
-                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
-                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
-                      🎯 Ключевой фокус
-                    </div>
-                    <p style={{ margin: 0, lineHeight: 1.6 }}>{currentBenchmark.focus}</p>
+                <details className="model-answer" open>
+                  <summary>
+                    <span>
+                      <p className="kicker">Эталонный разбор</p>
+                      <b>Ориентир решения от эксперта</b>
+                      <small>Нажмите, чтобы развернуть или скрыть</small>
+                    </span>
+                    <i>+</i>
+                  </summary>
+                  <div>
+                    <section>
+                      <h3>🎯 Ключевой фокус</h3>
+                      <p>{currentBenchmark.focus}</p>
+                    </section>
+                    <section>
+                      <h3>🧭 Логика рассуждения</h3>
+                      <p>{currentBenchmark.logic}</p>
+                    </section>
+                    <section>
+                      <h3 style={{ color: "var(--terracotta)" }}>⚠️ Типичные ошибки и ловушки</h3>
+                      <div className="benchmark-avoid-box">
+                        {currentBenchmark.avoid}
+                      </div>
+                    </section>
+                    <section>
+                      <h3>📚 Ключевые понятия</h3>
+                      <div className="topic-terms">
+                        {currentBenchmark.terms.map((t, i) => (
+                          <span key={i}>{t}</span>
+                        ))}
+                      </div>
+                    </section>
                   </div>
+                </details>
+              )}
 
-                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
-                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
-                      🧭 Логика рассуждения
-                    </div>
-                    <p style={{ margin: 0, lineHeight: 1.6 }}>{currentBenchmark.logic}</p>
-                  </div>
-
-                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
-                    <div className="benchmark-label" style={{ fontWeight: 700, color: "#dc2626", marginBottom: "4px" }}>
-                      ⚠️ Типичные ошибки и ловушки
-                    </div>
-                    <div className="benchmark-avoid-box" style={{ background: "#fef2f2", borderLeft: "4px solid #ef4444", padding: "10px 14px", borderRadius: "4px", color: "#991b1b" }}>
-                      {currentBenchmark.avoid}
-                    </div>
-                  </div>
-
-                  <div className="benchmark-section">
-                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
-                      📚 Ключевые понятия
-                    </div>
-                    <div className="topic-terms">
-                      {currentBenchmark.terms.map((t, i) => (
-                        <span key={i}>{t}</span>
-                      ))}
-                    </div>
+              {currentCase.sourceIds && currentCase.sourceIds.length > 0 && (
+                <div className="result-sources">
+                  <p className="kicker">Источники для углубления</p>
+                  <div>
+                    {getCaseSources(currentCase).map((s) => (
+                      <a
+                        key={s.id}
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <b>{s.org} ({s.year})</b>
+                        <span>{s.title}</span>
+                        <i>↗</i>
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
 
             <aside className="result-aside">
-              <p className="kicker">Действия</p>
-              <h2>Что дальше</h2>
+              <div className="aside-card">
+                <p className="kicker">Вердикт</p>
+                <b className={evaluation.passed ? "pass-text" : "revise-text"}>
+                  {evaluation.passed ? "Пройден" : "Повторить"}
+                </b>
+                <p>
+                  {evaluation.passed
+                    ? "Набрано не менее 65 баллов; все критические условия выполнены."
+                    : "Для зачёта нужны 65 баллов и отсутствие критических пропусков."}
+                </p>
+              </div>
 
               <button
                 type="button"
                 className="primary-button full"
                 onClick={() => navigateTo("practice")}
               >
-                Доработать решение →
+                Доработать решение ↻
               </button>
 
               <button
@@ -1330,9 +1378,17 @@ export default function Page() {
               <button
                 type="button"
                 className="secondary-button full"
+                onClick={() => navigateTo("profile")}
+              >
+                Открыть профиль
+              </button>
+
+              <button
+                type="button"
+                className="text-button"
                 onClick={() => navigateTo("catalog")}
               >
-                Все кейсы
+                ← Вернуться в каталог
               </button>
             </aside>
           </div>
@@ -1354,95 +1410,120 @@ export default function Page() {
 
           <div className="profile-stats">
             <div>
-              <small>Пройдено кейсов</small>
-              <b>{solvedCount}</b>
-              <span>из {cases.length} доступных</span>
+              <span>Попыток</span>
+              <b>{attempts.length}</b>
             </div>
             <div>
-              <small>Лучший результат</small>
-              <b>{bestScore}</b>
-              <span>баллов из 100</span>
+              <span>Лучший результат</span>
+              <b>{bestScore}<small>/100</small></b>
             </div>
             <div>
-              <small>Ослабленный блок</small>
-              <b>{weakestDimension ? `${weakestDimension.percent}%` : "—"}</b>
-              <span>{weakestDimension ? weakestDimension.name : "пока мало данных"}</span>
+              <span>Кейсов пройдено</span>
+              <b>{solvedCount}<small>/{cases.length}</small></b>
             </div>
           </div>
 
-          <div className="profile-content">
-            <div className="profile-dimensions">
-              <h2>Баланс по измерениям</h2>
-              {topDimensions.length > 0 ? (
-                topDimensions.map((d) => (
-                  <div key={d.name} className="dimension-row">
-                    <div>
-                      <span>{d.name}</span>
-                      <b>{d.percent}%</b>
-                    </div>
-                    <div>
-                      <i style={{ width: `${d.percent}%` }}></i>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="empty-hint">Пройдите хотя бы один кейс, чтобы увидеть раскладку компетенций.</p>
-              )}
-            </div>
-
-            <div className="profile-history">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-                <h2>История решений</h2>
-                {attempts.length > 0 && (
-                  <button
-                    type="button"
-                    className="text-link"
-                    style={{ fontSize: "12px", color: "var(--ochre)" }}
-                    onClick={() => {
-                      if (window.confirm("Очистить всю историю попыток?")) {
-                        localStorage.removeItem("psy-trainer-attempts-v2");
-                        localStorage.removeItem("psy-trainer-attempts");
-                        setAttempts([]);
-                        showToast("История очищена");
-                      }
-                    }}
-                  >
-                    Очистить историю
-                  </button>
-                )}
+          <div className="profile-grid">
+            <div className="history-card">
+              <div className="card-heading">
+                <h2>История попыток</h2>
+                <div className="card-heading-actions">
+                  <span>ПОКАЗАНО: {Math.min(attempts.length, 30)}</span>
+                  {attempts.length > 0 && (
+                    <button
+                      type="button"
+                      className="clear-history-btn"
+                      onClick={() => {
+                        if (window.confirm("Очистить всю историю попыток?")) {
+                          localStorage.removeItem("psy-trainer-attempts-v2");
+                          localStorage.removeItem("psy-trainer-attempts");
+                          setAttempts([]);
+                          showToast("История очищена");
+                        }
+                      }}
+                      title="Очистить сохранённую историю попыток"
+                    >
+                      Очистить
+                    </button>
+                  )}
+                </div>
               </div>
 
               {attempts.length > 0 ? (
-                <div className="history-table-wrap">
-                  <table className="history-table">
-                    <thead>
-                      <tr>
-                        <th>Кейс</th>
-                        <th>Дата</th>
-                        <th>Балл</th>
-                        <th>Статус</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attempts.map((att) => (
-                        <tr key={att.id}>
-                          <td><b>{att.caseTitle}</b></td>
-                          <td>{att.date}</td>
-                          <td><b>{att.score}</b> / 100</td>
-                          <td>
-                            <span className={`case-status ${att.passed ? "completed" : ""}`}>
-                              {att.passed ? "ЗАЧЁТ" : "ДОРАБОТКА"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                attempts.slice(0, 30).map((att) => (
+                  <div key={att.id} className="attempt-row">
+                    <span>{att.date}</span>
+                    <b>{att.caseTitle}</b>
+                    <em>{att.score} / 100</em>
+                    <i className={att.passed ? "passed" : "failed"}>
+                      {att.passed ? "Пройден" : "Доработать"}
+                    </i>
+                  </div>
+                ))
               ) : (
-                <p className="empty-hint">История пока пуста. Перейдите в каталог для начала тренировки.</p>
+                <div className="empty-state">
+                  <b>Здесь пока тихо</b>
+                  <p>Пройдите любой кейс — результат и динамика появятся в профиле.</p>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => navigateTo("catalog")}
+                  >
+                    Выбрать кейс →
+                  </button>
+                </div>
               )}
             </div>
+
+            <aside className="competency-card">
+              <p className="kicker light">Сводный профиль</p>
+              <h2>{topDimensions.length > 0 ? "Средние результаты" : "Сначала нужна попытка"}</h2>
+              {topDimensions.length > 0 ? (
+                <div className="competency-bars">
+                  {topDimensions.map((d) => (
+                    <div key={d.name}>
+                      <span>
+                        {d.name} <b>{d.percent}%</b>
+                      </span>
+                      <i>
+                        <em style={{ width: `${d.percent}%` }}></em>
+                      </i>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>После первой попытки здесь появится карта сильных и слабых зон.</p>
+              )}
+              <button
+                type="button"
+                onClick={() => navigateTo("catalog")}
+              >
+                Выбрать следующий кейс <span>↗</span>
+              </button>
+            </aside>
+          </div>
+
+          <div className="training-plan">
+            <div>
+              <p className="kicker">Персональная траектория</p>
+              <h2>
+                {weakestDimension
+                  ? `Зона роста: ${weakestDimension.name}`
+                  : "Пройдите первый кейс"}
+              </h2>
+              <p>
+                {weakestDimension
+                  ? `Текущий средний уровень — ${weakestDimension.percent}%. Следующий кейс выбирайте не по любимой теме, а по компетенции, которая требует практики.`
+                  : "После первой попытки тренажёр покажет наиболее полезное направление следующей тренировки."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => navigateTo("catalog")}
+            >
+              Перейти к практике <span>→</span>
+            </button>
           </div>
         </section>
       )}
@@ -1458,38 +1539,176 @@ export default function Page() {
             </p>
           </div>
 
-          <section className="method-section method-section-page">
-            <div className="method-grid">
-              <article>
-                <span>01</span>
-                <h3>Контекст и данные</h3>
-                <p>
-                  Отделите факты от домыслов. Что известно точно, что сообщают участники ситуации со своих слов, а что пока остаётся гипотезой?
-                </p>
-              </article>
-              <article>
-                <span>02</span>
-                <h3>Анализ запроса</h3>
-                <p>
-                  Не присваивайте человеку чужой запрос. Разделите явную жалобу, скрытую потребность и позиции разных сторон (руководитель, сотрудник, семья).
-                </p>
-              </article>
-              <article>
-                <span>03</span>
-                <h3>Риски и безопасность</h3>
-                <p>
-                  Всегда оценивайте непосредственную угрозу жизни, здоровью или деструктивному поведению. В оргконсалтинге — системные риски сбоев и саботажа.
-                </p>
-              </article>
-              <article>
-                <span>04</span>
-                <h3>Тактика и маршрут</h3>
-                <p>
-                  Сформулируйте последовательный план действий с ясными границами вашей роли и критериями того, как будет оцениваться прогресс.
-                </p>
-              </article>
+          <section className="method-section method-section-page" aria-labelledby="assessment-title">
+            <div className="method-title">
+              <p className="kicker light">Как устроена проверка</p>
+              <h2 id="assessment-title">Оценивается логика, а не совпадение с образцом</h2>
+            </div>
+            <div className="method-content">
+              <p>
+                Система отмечает смысловые элементы ответа: факты, рабочие гипотезы, конкретные вопросы оценки, этические границы, безопасность и последовательность помощи.
+              </p>
+              <div className="method-steps">
+                <div>
+                  <span>01</span>
+                  <b>{platformStats.questionsPerCase} заданий в кейсе</b>
+                  <p>Каждое задание проверяет отдельную профессиональную компетенцию.</p>
+                </div>
+                <div>
+                  <span>02</span>
+                  <b>100‑балльная рубрика</b>
+                  <p>Баллы отражают полноту ответа, а не «истину в последней инстанции».</p>
+                </div>
+                <div>
+                  <span>03</span>
+                  <b>Критические условия</b>
+                  <p>Пропуск риска или этической границы нельзя компенсировать красивым текстом.</p>
+                </div>
+                <div>
+                  <span>04</span>
+                  <b>Подробный разбор</b>
+                  <p>После попытки открываются сильные стороны, пробелы, ориентир решения и источники.</p>
+                </div>
+              </div>
+              <div className="demo-notice">
+                <b>Важно понимать</b>
+                <span>
+                  Автоматизированная рубрика предназначена для тренировки. Она не заменяет преподавателя, супервизию, очную оценку клиента или клиническое решение.
+                </span>
+              </div>
             </div>
           </section>
+
+          <div className="karta-board">
+            <div className="karta-title">
+              <span>01</span>
+              <div>
+                <p className="kicker">Базовая схема</p>
+                <h2>Метод КАРТА</h2>
+              </div>
+            </div>
+            <div className="karta-grid">
+              {kartaSteps.map((e, i) => (
+                <article key={`${e.letter}-${i}`}>
+                  <b>{e.letter}</b>
+                  <h3>{e.title}</h3>
+                  <p>{e.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="guide-columns">
+            <section className="guide-card">
+              <p className="kicker">Перед отправкой</p>
+              <h2>Чек-лист сильного ответа</h2>
+              <ol>
+                <li>
+                  <span>01</span>
+                  <p>
+                    <b>Факты отделены от гипотез.</b> Видно, кто именно сообщил каждый значимый факт.
+                  </p>
+                </li>
+                <li>
+                  <span>02</span>
+                  <p>
+                    <b>Есть альтернативы.</b> Вы не влюбились в первую диагностическую идею.
+                  </p>
+                </li>
+                <li>
+                  <span>03</span>
+                  <p>
+                    <b>Риски названы конкретно.</b> Указаны прямые вопросы и срочные развилки.
+                  </p>
+                </li>
+                <li>
+                  <span>04</span>
+                  <p>
+                    <b>Рамка понятна.</b> Определены клиент, запрос, согласие, конфиденциальность и компетентность.
+                  </p>
+                </li>
+                <li>
+                  <span>05</span>
+                  <p>
+                    <b>План имеет порядок.</b> Первый шаг не перепутан с десятой техникой.
+                  </p>
+                </li>
+              </ol>
+            </section>
+
+            <section className="guide-card mistakes">
+              <p className="kicker">Частые ошибки</p>
+              <h2>Что режет баллы</h2>
+              <ul>
+                <li>
+                  <b>Диагноз по трём строчкам</b>
+                  <span>Категоричный вывод без очной оценки и дифференциальных гипотез.</span>
+                </li>
+                <li>
+                  <b>«Оценить риск» без вопросов</b>
+                  <span>Красиво, но непроверяемо. Нужны мысли, намерение, план, средства, история и защита.</span>
+                </li>
+                <li>
+                  <b>Техника раньше контакта</b>
+                  <span>Домашнее задание и экспозиция не заменяют рамку, согласие и понимание запроса.</span>
+                </li>
+                <li>
+                  <b>Спор с клиентом</b>
+                  <span>Давление, морализация и попытка победить сопротивление обычно ухудшают рабочий контакт.</span>
+                </li>
+                <li>
+                  <b>Перенаправление «на всякий случай»</b>
+                  <span>Называйте причину, срочность, роль другого специалиста и что вы продолжаете делать сами.</span>
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <section className="tips-section">
+            <div className="tips-heading">
+              <p className="kicker">Практические приёмы</p>
+              <h2>Детали, по которым виден профессионал</h2>
+            </div>
+            <div className="tips-grid">
+              {guideTips.map((tip, i) => (
+                <article key={i}>
+                  <span>{String(i + 1).padStart(2, "0")}</span>
+                  <p>{tip}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="answer-comparison">
+            <div>
+              <p className="kicker">Короткий пример</p>
+              <h2>Слабый и профессиональный варианты</h2>
+            </div>
+            <article className="weak-answer">
+              <span>Слабая формулировка</span>
+              <p>«У клиента депрессия. Нужно направить к психиатру и начать КПТ».</p>
+            </article>
+            <article className="strong-answer">
+              <span>Профессиональная формулировка</span>
+              <p>
+                «Данные позволяют предположить депрессивную симптоматику, но сначала нужно прямо оценить суицидальный риск, уточнить длительность, прошлые периоды повышенной активности, вещества и медицинские причины. Маршрут помощи зависит от результатов этой оценки».
+              </p>
+            </article>
+          </section>
+
+          <div className="guide-cta">
+            <div>
+              <p className="kicker">Теперь в практику</p>
+              <h2>Выберите кейс и примените КАРТУ</h2>
+            </div>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => navigateTo("catalog")}
+            >
+              Открыть каталог <span>→</span>
+            </button>
+          </div>
         </section>
       )}
 
@@ -1501,43 +1720,80 @@ export default function Page() {
               <p className="kicker">Учебные ориентиры</p>
               <h1>База знаний</h1>
               <p>
-                Краткие вводные по ключевым теоретическим моделям и концептам тренажёра: на что обратить внимание и каких решений следует избегать.
+                Краткие вводные по темам тренажёра: на что обратить внимание, как выстроить рассуждение и каких решений следует избегать.
+              </p>
+            </div>
+            <div className="knowledge-note">
+              <b>Как пользоваться разделом</b>
+              <p>
+                Сначала прочитайте карточку темы, затем откройте связанный кейс. Здесь нет готовых ответов — только профессиональная оптика.
               </p>
             </div>
           </div>
 
           <div className="knowledge-grid">
-            <article className="knowledge-card">
-              <p className="kicker">Организационная психология</p>
-              <h3>Психологическая безопасность (Amy Edmondson)</h3>
-              <p>
-                Уверенность команды в том, что сообщение об ошибках или критика процессов не повлекут наказания. Главный фактор предотвращения скрытого брака на производстве.
-              </p>
-            </article>
+            {cases.map((c) => {
+              const bm = benchmarks[c.id];
+              if (!bm) return null;
+              return (
+                <article
+                  key={c.id}
+                  className="knowledge-card"
+                  style={{ "--case-accent": c.accent }}
+                >
+                  <div className="knowledge-card-head">
+                    <span>ТЕМА {c.index}</span>
+                    <em>{c.category}</em>
+                  </div>
+                  <p className="case-direction">{c.direction}</p>
+                  <h2>{c.title}</h2>
 
-            <article className="knowledge-card">
-              <p className="kicker">Управление изменениями</p>
-              <h3>Модель переходов Уильяма Бриджеса</h3>
-              <p>
-                Внутренний психологический процесс перестройки: Завершение (проживание утраты прежнего), Нейтральная зона (тревога и поиск) и Новое начало.
-              </p>
-            </article>
+                  <div className="knowledge-block">
+                    <b>Что важно заметить</b>
+                    <p>{bm.focus}</p>
+                  </div>
 
-            <article className="knowledge-card">
-              <p className="kicker">Стресс и мотивация</p>
-              <h3>Синдром выживших (Survivor Syndrome)</h3>
-              <p>
-                Вина и страх у оставшихся после сокращений сотрудников. Требует прозрачного диалога о будущем, а не принуждения к радости.
-              </p>
-            </article>
+                  <div className="knowledge-block">
+                    <b>Логика разбора</b>
+                    <p>{bm.logic}</p>
+                  </div>
 
-            <article className="knowledge-card">
-              <p className="kicker">Клиническое консультирование</p>
-              <h3>Оценка суицидального риска (NICE & WHO)</h3>
-              <p>
-                Прямое, спокойное выяснение мыслей, намерений, плана и доступа к средствам. Составление плана безопасности и определение границ тайны.
-              </p>
-            </article>
+                  <details>
+                    <summary>
+                      Чего следует избегать <span>+</span>
+                    </summary>
+                    <p>{bm.avoid}</p>
+                  </details>
+
+                  <div className="topic-terms">
+                    {bm.terms.map((t, idx) => (
+                      <span key={idx}>{t}</span>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openCase(c.id)}
+                  >
+                    Перейти к кейсу <span>→</span>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="knowledge-footer">
+            <div>
+              <p className="kicker">Нужна научная основа?</p>
+              <h2>Все документы собраны в отдельном реестре</h2>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => navigateTo("sources")}
+            >
+              Открыть источники <span>→</span>
+            </button>
           </div>
         </section>
       )}
@@ -1549,34 +1805,56 @@ export default function Page() {
             <p className="kicker">Открытая методология</p>
             <h1>Реестр источников</h1>
             <p>
-              Здесь собраны 33 документа, на которых построены вводные данные, рубрики и ориентиры ответов: ВОЗ, NICE, РПО, APA, ISO и CIPD.
+              Здесь собраны документы, на которых построены вводные, рубрики и ориентиры ответов. Русскоязычные материалы отмечены отдельно, а ссылки ведут на официальные страницы организаций.
             </p>
           </div>
 
-          <div style={{ padding: "0 clamp(20px, 4vw, 40px)", marginBottom: "24px" }}>
-            <div className="filter-row" style={{ justifyContent: "flex-start" }}>
-              <button
-                type="button"
-                className={sourceLang === "all" ? "selected" : ""}
-                onClick={() => setSourceLang("all")}
-              >
-                Все ({sources.length})
-              </button>
-              <button
-                type="button"
-                className={sourceLang === "ru" ? "selected" : ""}
-                onClick={() => setSourceLang("ru")}
-              >
-                На русском
-              </button>
-              <button
-                type="button"
-                className={sourceLang === "en" ? "selected" : ""}
-                onClick={() => setSourceLang("en")}
-              >
-                На английском
-              </button>
+          <div className="editorial-policy">
+            <div>
+              <span>01</span>
+              <b>Не копируем клиентов</b>
+              <p>
+                Все истории составлены специально для обучения и не содержат реальных персональных данных.
+              </p>
             </div>
+            <div>
+              <span>02</span>
+              <b>Отделяем руководство от закона</b>
+              <p>
+                Международные рекомендации не заменяют местное законодательство и внутренние регламенты.
+              </p>
+            </div>
+            <div>
+              <span>03</span>
+              <b>Показываем происхождение</b>
+              <p>
+                У каждого кейса есть конкретный список документов и дата публикации.
+              </p>
+            </div>
+          </div>
+
+          <div className="source-filter" aria-label="Фильтр источников по языку">
+            <button
+              type="button"
+              className={sourceLang === "all" ? "selected" : ""}
+              onClick={() => setSourceLang("all")}
+            >
+              Все источники · {sources.length}
+            </button>
+            <button
+              type="button"
+              className={sourceLang === "ru" ? "selected" : ""}
+              onClick={() => setSourceLang("ru")}
+            >
+              На русском · {sources.filter((s) => s.language === "RU").length}
+            </button>
+            <button
+              type="button"
+              className={sourceLang === "en" ? "selected" : ""}
+              onClick={() => setSourceLang("en")}
+            >
+              На английском · {sources.filter((s) => s.language === "EN").length}
+            </button>
           </div>
 
           <div className="source-list">
@@ -1586,19 +1864,25 @@ export default function Page() {
                 href={s.url}
                 target="_blank"
                 rel="noreferrer"
-                className="source-card"
               >
                 <span className="source-number">{String(idx + 1).padStart(2, "0")}</span>
                 <div>
                   <small>
                     {s.org} · {s.year} {s.language === "RU" ? "· на русском" : ""}
                   </small>
-                  <h3>{s.title}</h3>
+                  <h2>{s.title}</h2>
                   <p>{s.focus}</p>
                 </div>
                 <i>↗</i>
               </a>
             ))}
+          </div>
+
+          <div className="source-disclaimer">
+            <span>Примечание</span>
+            <p>
+              Ссылки ведут на сайты ВОЗ, NICE, РПО, APA, ISO, CIPD и других профессиональных ассоциаций. Доступность внешних материалов зависит от их правообладателей.
+            </p>
           </div>
         </section>
       )}
