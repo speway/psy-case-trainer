@@ -3,21 +3,22 @@ import "./globals.css";
 export const metadata = {
   metadataBase: new URL("https://psy-case-trainer.vercel.app"),
   title: {
-    default: "Тренажёр психолога",
-    template: "%s — Тренажёр психолога",
+    default: "Тренажёр для психологов",
+    template: "%s — Тренажёр для психологов",
   },
   description:
-    "Учебная платформа Научного сектора психологии ТФ МГУ: документированные кейсы, методика КАРТА, разбор ошибок и профессиональные источники.",
-  applicationName: "Тренажёр психолога",
-  authors: [{ name: "Научный сектор психологии ТФ МГУ" }],
-  creator: "Научный сектор психологии ТФ МГУ",
-  publisher: "Научный сектор психологии ТФ МГУ",
+    "Практикум решения психологических и организационных кейсов: клинические ситуации, организационная диагностика, стандарты и разбор решений.",
+  applicationName: "Тренажёр для психологов",
+  authors: [{ name: "Тренажёр для психологов" }],
+  creator: "Тренажёр для психологов",
+  publisher: "Тренажёр для психологов",
   keywords: [
     "психология",
     "учебные кейсы",
-    "студенты-психологи",
+    "тренажёр для психологов",
     "психологическое консультирование",
-    "ТФ МГУ",
+    "организационная психология",
+    "HR-консалтинг",
   ],
   alternates: {
     canonical: "/",
@@ -26,37 +27,42 @@ export const metadata = {
     type: "website",
     locale: "ru_RU",
     url: "/",
-    siteName: "Тренажёр психолога",
-    title: "Тренажёр психолога",
+    siteName: "Тренажёр для психологов",
+    title: "Тренажёр для психологов",
     description:
-      "Учебные психологические кейсы, методика КАРТА, разбор ошибок и профессиональные источники.",
+      "Практикум решения психологических и организационных кейсов, разбор ошибок и профессиональные источники.",
     images: [
       {
         url: "/og-preview.png",
         width: 1200,
         height: 630,
-        alt: "Тренажёр психолога — учебная площадка Научного сектора психологии ТФ МГУ",
+        alt: "Тренажёр для психологов",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Тренажёр психолога",
+    title: "Тренажёр для психологов",
     description:
-      "Учебные психологические кейсы, методика КАРТА, разбор ошибок и профессиональные источники.",
+      "Практикум решения психологических и организационных кейсов, разбор ошибок и профессиональные источники.",
     images: ["/og-preview.png"],
   },
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml", sizes: "any" }],
-    shortcut: "/favicon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
 export const viewport = {
+  themeColor: "#10201c",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
-  themeColor: "#17332d",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {

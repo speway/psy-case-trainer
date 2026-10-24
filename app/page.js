@@ -1,69 +1,99 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { sources } from "./data/sources";
 import { cases } from "./data/cases";
 import { benchmarks } from "./data/benchmarks";
 
+function BrandMark() {
+  return (
+    <span className="brand">
+      <span className="brand-mark">Ψ</span>
+      <span>
+        <b>ТРЕНАЖЁР ДЛЯ ПСИХОЛОГОВ</b>
+        <small>ПРАКТИКУМ РЕШЕНИЯ КЕЙСОВ</small>
+      </span>
+    </span>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M3 8h10m0 0L8.5 3.5M13 8l-4.5 4.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function getCaseSources(c) {
+  if (!c || !c.sourceIds) return [];
+  return c.sourceIds.map((id) => sources.find((s) => s.id === id)).filter(Boolean);
+}
+
 export default function Page() {
-  // Navigation & Core Selection
+  // Navigation
   const [tab, setTab] = useState("home");
   const [currentCaseId, setCurrentCaseId] = useState(cases[0].id);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState(Array(cases[0].questions.length).fill(""));
   const [evaluation, setEvaluation] = useState(null);
   const [attempts, setAttempts] = useState([]);
-  const [favorites, setFavorites] = useState([]);
+  const [hasDraft, setHasDraft] = useState(false);
 
-  // Catalog Filters & Search
+  // Catalog Filters
   const [selectedDirection, setSelectedDirection] = useState("all"); // 'all' | 'org' | 'clin'
   const [selectedCategory, setSelectedCategory] = useState("Все");
-  const [selectedLevel, setSelectedLevel] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("index");
 
-  // Practice Mode Controls
-  const [viewMode, setViewMode] = useState("stepper"); // 'stepper' | 'all'
+  // Practice state
   const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(1500); // 25 mins
+  const [timerSeconds, setTimerSeconds] = useState(1500); // 25 min default
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState(null);
-  const [selfCheck, setSelfCheck] = useState({
-    facts: false,
-    system: false,
-    ethics: false,
-    solution: false
-  });
-
-  // Sources Filters
-  const [sourceLang, setSourceLang] = useState("all");
-  const [sourceSearch, setSourceSearch] = useState("");
-
-  // Toast feedback
   const [toast, setToast] = useState(null);
+
+  // Sources Filter
+  const [sourceLang, setSourceLang] = useState("all");
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Current active case & benchmark
   const currentCase = useMemo(() => {
     return cases.find((c) => c.id === currentCaseId) ?? cases[0];
   }, [currentCaseId]);
 
   const currentBenchmark = benchmarks[currentCase.id];
 
-  // Load persistence (Attempts & Favorites)
+  const platformStats = useMemo(() => {
+    return {
+      cases: cases.length,
+      totalQuestions: cases.reduce((acc, c) => acc + c.questions.length, 0),
+      methodSteps: 4,
+      topics: 12,
+      sources: sources.length,
+    };
+  }, []);
+
+  // Load history from localStorage
   useEffect(() => {
     try {
-      const storedAttempts = localStorage.getItem("psy-trainer-attempts-v2") || localStorage.getItem("psy-trainer-attempts");
-      if (storedAttempts) {
-        const parsed = JSON.parse(storedAttempts);
-        if (Array.isArray(parsed)) {
-          setAttempts(
-            parsed.filter((e) => typeof e.score === "number").map((e) => ({
+      const stored =
+        localStorage.getItem("psy-trainer-attempts-v2") ||
+        localStorage.getItem("psy-trainer-attempts");
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setAttempts(
+          parsed
+            .filter((e) => typeof e.score === "number")
+            .map((e) => ({
               id: e.id ?? Date.now(),
               caseId: e.caseId ?? cases[0].id,
               caseTitle: e.caseTitle ?? cases[0].title,
@@ -71,54 +101,40 @@ export default function Page() {
               passed: !!e.passed,
               date: e.date ?? "Ранее",
               dimensions: e.dimensions ?? [],
-              answers: e.answers ?? []
             }))
-          );
-        }
+        );
       }
-
-      const storedFavs = localStorage.getItem("psy-trainer-favorites");
-      if (storedFavs) {
-        const parsedFavs = JSON.parse(storedFavs);
-        if (Array.isArray(parsedFavs)) setFavorites(parsedFavs);
-      }
-    } catch (err) {
-      console.warn("Storage load error:", err);
-    }
+    } catch {}
   }, []);
 
-  // Sync draft answers when switching cases or starting practice
+  // Scroll to top on navigation
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [tab, currentStep, currentCaseId]);
+
+  // Sync draft existence
   useEffect(() => {
     try {
       const draft = localStorage.getItem(`psy-trainer-draft-${currentCase.id}`);
-      if (draft) {
-        const parsed = JSON.parse(draft);
-        if (Array.isArray(parsed.answers) && parsed.answers.length === currentCase.questions.length) {
-          setAnswers(parsed.answers);
-          if (typeof parsed.currentStep === "number") setCurrentStep(parsed.currentStep);
-          if (parsed.savedAt) setLastSavedTime(new Date(parsed.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-          return;
-        }
-      }
-    } catch {}
-    setAnswers(Array(currentCase.questions.length).fill(""));
-    setCurrentStep(0);
-  }, [currentCase.id]);
+      setHasDraft(!!draft);
+    } catch {
+      setHasDraft(false);
+    }
+  }, [currentCase.id, tab]);
 
-  // Auto-save draft on answers change in practice mode
+  // Auto-save draft in practice
   useEffect(() => {
-    if (tab === "practice" && answers.some((a) => a && a.trim().length > 0)) {
+    if (tab === "practice" && answers.some((e) => e && e.trim().length > 0)) {
       try {
-        const now = Date.now();
         localStorage.setItem(
           `psy-trainer-draft-${currentCase.id}`,
           JSON.stringify({
             answers,
             currentStep,
-            savedAt: now
+            savedAt: Date.now(),
           })
         );
-        setLastSavedTime(new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        setHasDraft(true);
       } catch {}
     }
   }, [answers, currentStep, currentCase.id, tab]);
@@ -134,69 +150,223 @@ export default function Page() {
     return () => clearInterval(interval);
   }, [isTimerRunning, tab]);
 
-  // Scroll to top on tab or case change
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, [tab, currentStep, currentCaseId]);
-
-  // URL hash navigation support
-  useEffect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (["home", "catalog", "case", "practice", "result", "profile", "guide", "knowledge", "sources"].includes(hash)) {
-        setTab(hash);
-      }
-    };
-    handleHash();
-    window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
-
-  const navigateTo = (newTab) => {
-    setTab(newTab);
-    try {
-      const s = newTab === "home" ? "" : `#${newTab}`;
-      window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${s}`);
-    } catch {}
-  };
-
-  // Toggle favorite
-  const toggleFavorite = (caseId, e) => {
-    if (e) e.stopPropagation();
-    setFavorites((prev) => {
-      const updated = prev.includes(caseId) ? prev.filter((id) => id !== caseId) : [...prev, caseId];
-      try {
-        localStorage.setItem("psy-trainer-favorites", JSON.stringify(updated));
-      } catch {}
-      showToast(updated.includes(caseId) ? "Кейс добавлен в избранное ★" : "Кейс удалён из избранного");
-      return updated;
-    });
-  };
-
-  // Format timer
   const formatTimer = (secs) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Clear current draft
-  const clearDraft = () => {
-    if (window.confirm("Очистить все введённые ответы по этому кейсу?")) {
-      try {
-        localStorage.removeItem(`psy-trainer-draft-${currentCase.id}`);
-      } catch {}
-      setAnswers(Array(currentCase.questions.length).fill(""));
-      setCurrentStep(0);
-      setLastSavedTime(null);
-      showToast("Черновик очищен");
+  // Best attempts map
+  const bestAttempts = useMemo(() => {
+    const map = new Map();
+    attempts.forEach((att) => {
+      const existing = map.get(att.caseId);
+      if (!existing || att.score > existing.score) map.set(att.caseId, att);
+    });
+    return map;
+  }, [attempts]);
+
+  // Solved count
+  const solvedCount = useMemo(() => {
+    return new Set(attempts.filter((a) => a.passed).map((a) => a.caseId)).size;
+  }, [attempts]);
+
+  const bestScore = useMemo(() => {
+    return attempts.reduce((max, a) => Math.max(max, a.score), 0);
+  }, [attempts]);
+
+  const topDimensions = useMemo(() => {
+    const map = new Map();
+    attempts.forEach((att) => {
+      att.dimensions.forEach((d) => {
+        const cur = map.get(d.name) ?? { score: 0, max: 0 };
+        map.set(d.name, { score: cur.score + d.score, max: cur.max + d.max });
+      });
+    });
+    return Array.from(map.entries())
+      .map(([name, data]) => ({
+        name,
+        percent: data.max > 0 ? Math.round((data.score / data.max) * 100) : 0,
+      }))
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 8);
+  }, [attempts]);
+
+  // Weakest dimension
+  const weakestDimension = useMemo(() => {
+    if (topDimensions.length === 0) return null;
+    return [...topDimensions].sort((a, b) => a.percent - b.percent)[0];
+  }, [topDimensions]);
+
+  // URL Hash sync
+  useEffect(() => {
+    const syncHash = () => {
+      const hash = window.location.hash.replace("#", "");
+      if (["home", "catalog", "case", "practice", "result", "profile", "guide", "knowledge", "sources"].includes(hash)) {
+        setTab(hash);
+      } else if (!hash) {
+        setTab("home");
+      }
+    };
+    syncHash();
+    window.addEventListener("popstate", syncHash);
+    return () => window.removeEventListener("popstate", syncHash);
+  }, []);
+
+  const navigateTo = (newTab) => {
+    setTab(newTab);
+    try {
+      const hash = newTab === "home" ? "" : `#${newTab}`;
+      window.history.pushState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+    } catch {}
+  };
+
+  // Open a case briefing
+  const openCase = (caseId) => {
+    setCurrentCaseId(caseId);
+    setEvaluation(null);
+    try {
+      setHasDraft(!!localStorage.getItem(`psy-trainer-draft-${caseId}`));
+    } catch {
+      setHasDraft(false);
     }
+    navigateTo("case");
+  };
+
+  // Start practicing a case
+  const startPractice = (resumeDraft = false) => {
+    if (resumeDraft) {
+      try {
+        const draft = localStorage.getItem(`psy-trainer-draft-${currentCase.id}`);
+        if (draft) {
+          const parsed = JSON.parse(draft);
+          if (Array.isArray(parsed.answers) && parsed.answers.length === currentCase.questions.length) {
+            setAnswers(parsed.answers);
+            setCurrentStep(
+              Math.min(Math.max(parsed.currentStep ?? 0, 0), currentCase.questions.length - 1)
+            );
+            setEvaluation(null);
+            navigateTo("practice");
+            return;
+          }
+        }
+      } catch {}
+    }
+    setAnswers(Array(currentCase.questions.length).fill(""));
+    setCurrentStep(0);
+    setEvaluation(null);
+    navigateTo("practice");
+  };
+
+  // Dynamic categories list
+  const categoriesForDirection = useMemo(() => {
+    let pool = cases;
+    if (selectedDirection === "org") {
+      pool = cases.filter((c) => c.direction.includes("Организационн"));
+    } else if (selectedDirection === "clin") {
+      pool = cases.filter((c) => !c.direction.includes("Организационн"));
+    }
+    const cats = Array.from(new Set(pool.map((c) => c.category))).filter(Boolean);
+    return ["Все", ...cats];
+  }, [selectedDirection]);
+
+  // Filtered cases for catalog
+  const filteredCases = useMemo(() => {
+    return cases.filter((c) => {
+      // Direction
+      if (selectedDirection === "org" && !c.direction.includes("Организационн")) return false;
+      if (selectedDirection === "clin" && c.direction.includes("Организационн")) return false;
+
+      // Category
+      if (selectedCategory !== "Все" && c.category !== selectedCategory) return false;
+
+      // Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const inTitle = c.title.toLowerCase().includes(q);
+        const inSummary = c.summary.toLowerCase().includes(q);
+        const inIndex = c.index.includes(q);
+        const inComp = c.competencies && c.competencies.some((comp) => comp.toLowerCase().includes(q));
+        if (!inTitle && !inSummary && !inIndex && !inComp) return false;
+      }
+
+      return true;
+    });
+  }, [selectedDirection, selectedCategory, searchQuery]);
+
+  // Answered questions count in practice
+  const answeredCount = useMemo(() => {
+    return answers.filter((a) => (a || "").trim().length >= 40).length;
+  }, [answers]);
+
+  // Evaluate answers
+  const handleEvaluate = () => {
+    const questionScores = currentCase.questions.map((q, idx) => {
+      const ans = (answers[idx] || "").trim();
+      const ansLower = ans.toLowerCase();
+      let matched = 0;
+      if (q.signals && q.signals.length > 0) {
+        q.signals.forEach((sig) => {
+          if (sig.test(ansLower)) matched++;
+        });
+      }
+      const ratio = q.signals && q.signals.length > 0 ? matched / q.signals.length : (ans.length >= 100 ? 1 : 0.5);
+      return {
+        dimension: q.dimension || q.short || `Вопрос ${idx + 1}`,
+        score: ans ? Math.round(ratio * q.max) : 0,
+        max: q.max,
+        note: q.note,
+        gap: q.gap,
+      };
+    });
+
+    const criticalFlags = (currentCase.criticalRules || [])
+      .filter((r) => {
+        const ans = (answers[r.answer] || "").toLowerCase();
+        return !r.requirements.every((req) => req.test(ans));
+      })
+      .map((r) => r.message);
+
+    const totalScore = questionScores.reduce((sum, q) => sum + q.score, 0);
+    const passed = totalScore >= 60 && criticalFlags.length === 0;
+
+    const dimensions = questionScores.map((q) => ({
+      name: q.dimension,
+      score: q.score,
+      max: q.max,
+      percent: q.max > 0 ? Math.round((q.score / q.max) * 100) : 0,
+    }));
+
+    const resultObj = {
+      id: Date.now(),
+      caseId: currentCase.id,
+      caseTitle: currentCase.title,
+      score: totalScore,
+      passed,
+      date: new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+      dimensions,
+      criticalFlags,
+      questionScores,
+      answers: [...answers],
+    };
+
+    setEvaluation(resultObj);
+    setAttempts((prev) => {
+      const next = [resultObj, ...prev];
+      try {
+        localStorage.setItem("psy-trainer-attempts-v2", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    navigateTo("result");
+    showToast(`Оценка сформирована: ${totalScore}/100 баллов`);
   };
 
   // Export solution to clipboard
   const copySolution = () => {
     let text = `РЕШЕНИЕ КЕЙСА: ${currentCase.index} — ${currentCase.title}\n`;
-    text += `Направление: ${currentCase.direction}\nКатегория: ${currentCase.category}\n\n`;
+    text += `Направление: ${currentCase.direction} | Категория: ${currentCase.category}\n\n`;
     currentCase.questions.forEach((q, i) => {
       text += `--- Вопрос ${i + 1}: ${q.title} ---\n`;
       text += `${answers[i] || "(Ответ не заполнен)"}\n\n`;
@@ -213,13 +383,13 @@ export default function Page() {
     let md = `# Решение кейса ${currentCase.index}: ${currentCase.title}\n\n`;
     md += `**Направление**: ${currentCase.direction}  \n`;
     md += `**Категория**: ${currentCase.category} | **Уровень**: ${currentCase.level} | **Время**: ${currentCase.time}  \n\n`;
-    md += `## Краткое описание\n${currentCase.summary}\n\n`;
-    md += `## Ответы на вопросы\n\n`;
+    md += `## Краткое описание ситуации\n${currentCase.summary}\n\n`;
+    md += `## Ответы на задания\n\n`;
     currentCase.questions.forEach((q, i) => {
       md += `### ${i + 1}. ${q.prompt}\n\n`;
       md += `${answers[i] ? answers[i].trim() : "_Ответ не предоставлен_"}\n\n`;
     });
-    md += `---\n_Тренажёр психолога и оргконсультанта — Научный сектор психологии ТФ МГУ_\n`;
+    md += `---\n_Тренажёр для психологов — Практикум решения кейсов_\n`;
 
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -231,199 +401,18 @@ export default function Page() {
     showToast("Файл решения скачан (.md) ✓");
   };
 
-  // Dynamic categories list based on selected direction
-  const availableCategories = useMemo(() => {
-    let pool = cases;
-    if (selectedDirection === "org") {
-      pool = cases.filter((c) => c.direction.includes("Организационн"));
-    } else if (selectedDirection === "clin") {
-      pool = cases.filter((c) => !c.direction.includes("Организационн"));
-    }
-    const cats = Array.from(new Set(pool.map((c) => c.category))).filter(Boolean);
-    return ["Все", ...cats];
-  }, [selectedDirection]);
-
-  // Filtered & Sorted Cases
-  const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
-      // Direction
-      if (selectedDirection === "org" && !c.direction.includes("Организационн")) return false;
-      if (selectedDirection === "clin" && c.direction.includes("Организационн")) return false;
-
-      // Category
-      if (selectedCategory !== "Все" && c.category !== selectedCategory) return false;
-
-      // Level
-      if (selectedLevel !== "all" && c.level !== selectedLevel) return false;
-
-      // Status
-      if (selectedStatus === "fav" && !favorites.includes(c.id)) return false;
-      if (selectedStatus === "solved") {
-        const hasPassed = attempts.some((att) => att.caseId === c.id && att.passed);
-        if (!hasPassed) return false;
-      }
-      if (selectedStatus === "draft") {
-        try {
-          const draft = localStorage.getItem(`psy-trainer-draft-${c.id}`);
-          if (!draft) return false;
-        } catch {
-          return false;
-        }
-      }
-
-      // Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchTitle = c.title.toLowerCase().includes(q);
-        const matchSummary = c.summary.toLowerCase().includes(q);
-        const matchIndex = c.index.includes(q);
-        const matchComp = c.competencies && c.competencies.some((comp) => comp.toLowerCase().includes(q));
-        const matchFacts = c.facts && c.facts.some((fact) => fact.toLowerCase().includes(q));
-        if (!matchTitle && !matchSummary && !matchIndex && !matchComp && !matchFacts) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === "index") return a.index.localeCompare(b.index);
-      if (sortBy === "level") {
-        const map = { Базовый: 1, Продвинутый: 2, Экспертный: 3 };
-        return (map[b.level] || 0) - (map[a.level] || 0);
-      }
-      if (sortBy === "time") return a.time.localeCompare(b.time);
-      return 0;
-    });
-  }, [selectedDirection, selectedCategory, selectedLevel, selectedStatus, searchQuery, sortBy, favorites, attempts]);
-
-  // Best attempts map
-  const bestAttempts = useMemo(() => {
-    const map = new Map();
-    attempts.forEach((att) => {
-      const existing = map.get(att.caseId);
-      if (!existing || att.score > existing.score) map.set(att.caseId, att);
-    });
-    return map;
-  }, [attempts]);
-
-  // Evaluation engine
-  const handleEvaluate = () => {
-    const questions = currentCase.questions;
-    let totalScore = 0;
-    const dimensionsMap = new Map();
-    const feedbacks = [];
-
-    questions.forEach((q, idx) => {
-      const ans = (answers[idx] || "").trim();
-      const ansLower = ans.toLowerCase();
-      let matchedCount = 0;
-
-      if (q.signals && q.signals.length > 0) {
-        q.signals.forEach((sig) => {
-          if (sig.test(ansLower)) matchedCount++;
-        });
-      }
-
-      const ratio = q.signals && q.signals.length > 0 ? matchedCount / q.signals.length : (ans.length >= 100 ? 1 : 0.5);
-      const qScore = Math.round(ratio * q.max);
-      totalScore += qScore;
-
-      // Dimension aggregate
-      const dimName = q.dimension || "Анализ";
-      const curDim = dimensionsMap.get(dimName) || { score: 0, max: 0 };
-      dimensionsMap.set(dimName, {
-        score: curDim.score + qScore,
-        max: curDim.max + q.max
-      });
-
-      feedbacks.push({
-        short: q.short,
-        title: q.title,
-        prompt: q.prompt,
-        userAnswer: ans,
-        score: qScore,
-        max: q.max,
-        note: q.note,
-        gap: q.gap,
-        matchedRatio: Math.round(ratio * 100)
-      });
-    });
-
-    const passed = totalScore >= 60;
-    const dimensions = Array.from(dimensionsMap.entries()).map(([name, data]) => ({
-      name,
-      score: data.score,
-      max: data.max,
-      percent: data.max > 0 ? Math.round((data.score / data.max) * 100) : 0
-    }));
-
-    const resultObj = {
-      id: Date.now(),
-      caseId: currentCase.id,
-      caseTitle: currentCase.title,
-      score: totalScore,
-      passed,
-      date: new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
-      dimensions,
-      feedbacks,
-      answers: [...answers]
-    };
-
-    setEvaluation(resultObj);
-    setAttempts((prev) => {
-      const next = [resultObj, ...prev];
-      try {
-        localStorage.setItem("psy-trainer-attempts-v2", JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-
-    navigateTo("result");
-    showToast(`Оценка сформирована: ${totalScore}/100 баллов`);
-  };
-
-  // Solved counts
-  const solvedCount = useMemo(() => {
-    return new Set(attempts.filter((a) => a.passed).map((a) => a.caseId)).size;
-  }, [attempts]);
-
-  const solvedOrgCount = useMemo(() => {
-    const orgIds = new Set(cases.filter((c) => c.direction.includes("Организационн")).map((c) => c.id));
-    return new Set(attempts.filter((a) => a.passed && orgIds.has(a.caseId)).map((a) => a.caseId)).size;
-  }, [attempts]);
-
-  const solvedClinCount = useMemo(() => {
-    const clinIds = new Set(cases.filter((c) => !c.direction.includes("Организационн")).map((c) => c.id));
-    return new Set(attempts.filter((a) => a.passed && clinIds.has(a.caseId)).map((a) => a.caseId)).size;
-  }, [attempts]);
-
-  const averageScore = useMemo(() => {
-    if (attempts.length === 0) return 0;
-    return Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length);
-  }, [attempts]);
-
-  const bestScore = useMemo(() => {
-    if (attempts.length === 0) return 0;
-    return attempts.reduce((max, a) => Math.max(max, a.score), 0);
-  }, [attempts]);
-
-  // Sources filtering
+  // Filtered sources
   const filteredSources = useMemo(() => {
     return sources.filter((s) => {
       if (sourceLang === "ru" && s.language !== "RU") return false;
       if (sourceLang === "en" && s.language !== "EN") return false;
-      if (sourceSearch.trim()) {
-        const q = sourceSearch.toLowerCase();
-        const matchTitle = s.title.toLowerCase().includes(q);
-        const matchOrg = s.org.toLowerCase().includes(q);
-        const matchFocus = s.focus && s.focus.toLowerCase().includes(q);
-        if (!matchTitle && !matchOrg && !matchFocus) return false;
-      }
       return true;
     });
-  }, [sourceLang, sourceSearch]);
+  }, [sourceLang]);
 
   return (
-    <div className="site-wrapper">
-      {/* Toast Notification */}
+    <main>
+      {/* Toast */}
       {toast && (
         <div className="toast-notice" role="alert">
           <span>{toast}</span>
@@ -431,50 +420,30 @@ export default function Page() {
       )}
 
       {/* Global Header */}
-      <header className="site-header">
+      <header className={`site-header ${tab !== "home" ? "inner-header" : ""}`}>
         <button
           type="button"
           className="brand-button"
           onClick={() => navigateTo("home")}
           aria-label="На главную"
         >
-          <span className="brand">
-            <span className="brand-mark">Ψ</span>
-            <span>
-              <b>Тренажёр психолога</b>
-              <small>Научный сектор психологии ТФ МГУ</small>
-            </span>
-          </span>
+          <BrandMark />
         </button>
 
         <nav aria-label="Основная навигация">
           <button
             type="button"
-            className={tab === "home" ? "active" : ""}
-            onClick={() => navigateTo("home")}
-          >
-            Главная
-          </button>
-          <button
-            type="button"
-            className={tab === "catalog" ? "active" : ""}
+            className={["catalog", "case", "practice", "result"].includes(tab) ? "active" : ""}
             onClick={() => navigateTo("catalog")}
           >
             Кейсы ({cases.length})
           </button>
           <button
             type="button"
-            className={tab === "profile" ? "active" : ""}
-            onClick={() => navigateTo("profile")}
-          >
-            Профиль {solvedCount > 0 ? `(${solvedCount})` : ""}
-          </button>
-          <button
-            type="button"
             className={tab === "guide" ? "active" : ""}
             onClick={() => navigateTo("guide")}
           >
-            Методика
+            Как работать
           </button>
           <button
             type="button"
@@ -490,39 +459,61 @@ export default function Page() {
           >
             Источники ({sources.length})
           </button>
+          <button
+            type="button"
+            className={tab === "profile" ? "active" : ""}
+            onClick={() => navigateTo("profile")}
+          >
+            Профиль {solvedCount > 0 ? `(${solvedCount})` : ""}
+          </button>
         </nav>
 
-        <button
-          type="button"
-          className="header-cta"
-          onClick={() => {
-            setCurrentCaseId(cases[0].id);
-            navigateTo("practice");
-          }}
-        >
-          Решать кейс
-        </button>
+        {tab === "practice" ? (
+          <button
+            type="button"
+            className="header-cta quiet"
+            onClick={() => navigateTo("case")}
+          >
+            Выйти из кейса
+          </button>
+        ) : tab === "home" ? (
+          <button
+            type="button"
+            className="header-cta"
+            onClick={() => navigateTo("catalog")}
+          >
+            Начать практику
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="header-cta quiet"
+            onClick={() => navigateTo("catalog")}
+          >
+            Все кейсы
+          </button>
+        )}
       </header>
 
       {/* VIEW: HOME */}
       {tab === "home" && (
-        <main className="home-view">
-          <section className="hero">
-            <div className="bauhaus-grid">
-              <span className="hero-shape hero-ring"></span>
-              <span className="hero-shape hero-quarter"></span>
-              <span className="hero-dots"></span>
+        <>
+          <section className="hero" id="top">
+            <div className="bauhaus-grid" aria-hidden="true"></div>
+            <div className="hero-shape hero-ring" aria-hidden="true"></div>
+            <div className="hero-shape hero-quarter" aria-hidden="true"></div>
+            <div className="hero-dots" aria-hidden="true">
+              <i></i><i></i><i></i>
             </div>
             <div className="hero-frame">
               <div className="hero-copy">
-                <span className="eyebrow">Интерактивный практикум для психологов и консультантов</span>
+                <div className="eyebrow">ПРАКТИКУМ · ПСИХОЛОГИЯ</div>
                 <h1>
-                  Тренажёр диагностического мышления и <em>оргконсалтинга</em>
+                  Тренажёр для <em>психологов</em>
                 </h1>
                 <p>
-                  Практикуйтесь в решении сложных кейсов из клинической и организационной психологии:
-                  от кризисных состояний и оценки суицидального риска до фасилитации сопротивления
-                  изменениям, аудита психологической безопасности и урегулирования статусных конфликтов.
+                  Разбирайте реальные учебные и организационные ситуации, показывайте ход рассуждения
+                  и получайте понятную обратную связь по профессиональной рубрике.
                 </p>
                 <div className="hero-actions">
                   <button
@@ -530,503 +521,501 @@ export default function Page() {
                     className="primary-button"
                     onClick={() => navigateTo("catalog")}
                   >
-                    <span>Открыть каталог (37 кейсов)</span>
+                    Перейти к кейсам <ArrowIcon />
                   </button>
                   <button
                     type="button"
-                    className="secondary-button"
+                    className="text-link"
                     onClick={() => navigateTo("guide")}
                   >
-                    <span>Методический гид</span>
+                    Сначала изучить правила <span>→</span>
                   </button>
                 </div>
               </div>
 
-              <div className="hero-index">
-                <div className="hero-stat-card">
-                  <b>37</b>
-                  <span>Кейсов в базе практики</span>
-                </div>
-                <div className="hero-stat-card">
-                  <b>2</b>
-                  <span>Направления (Клиническое + Орг)</span>
-                </div>
-                <div className="hero-stat-card">
-                  <b>33</b>
-                  <span>Стандарта (NICE, WHO, APA, ISO)</span>
-                </div>
-                <div className="hero-stat-card">
-                  <b>100%</b>
-                  <span>Объективная рубрика и эталоны</span>
-                </div>
+              <div className="hero-psi" aria-hidden="true">Ψ</div>
+
+              <div className="hero-index" aria-hidden="true">
+                <span>БАЗА</span>
+                <b>{cases.length}</b>
+                <small>КЕЙСОВ</small>
               </div>
             </div>
           </section>
 
-          {/* Principles Strip */}
-          <section className="principles-strip">
-            <div className="principles-track">
-              <div className="principle-item">
-                <b>01 / ФАКТЫ</b>
-                <p>Отделение объективных данных от субъективных домыслов и поспешных диагнозов.</p>
-              </div>
-              <div className="principle-item">
-                <b>02 / СИСТЕМНОСТЬ</b>
-                <p>Учёт организационной структуры, групповой динамики и психологического контекста.</p>
-              </div>
-              <div className="principle-item">
-                <b>03 / ЭТИКА</b>
-                <p>Соблюдение границ роли консультанта, правил конфиденциальности и информированного согласия.</p>
-              </div>
-              <div className="principle-item">
-                <b>04 / ИЗМЕРИМОСТЬ</b>
-                <p>Разработка конкретных критериев эффективности и реалистичных дорожных карт.</p>
-              </div>
+          <section className="principles-strip" aria-label="Принципы тренажёра">
+            <div>
+              <b>01</b>
+              <span>Факты и проверяемые данные вместо домыслов</span>
+            </div>
+            <div>
+              <b>02</b>
+              <span>Источники NICE, ВОЗ, РПО, APA и ISO 45003</span>
+            </div>
+            <div>
+              <b>03</b>
+              <span>Критические профессиональные ошибки блокируют зачёт</span>
+            </div>
+            <div>
+              <b>04</b>
+              <span>История попыток и профиль компетенций специалиста</span>
             </div>
           </section>
 
-          {/* Direction Highlights */}
-          <section className="home-sections">
+          <section className="home-sections" aria-labelledby="home-sections-title">
             <div className="home-sections-heading">
-              <span className="kicker">Два направления профессионального развития</span>
-              <h2>Выберите блок для отработки компетенций</h2>
+              <div>
+                <p className="kicker">Структура платформы</p>
+                <h2 id="home-sections-title">Всё на своих местах</h2>
+              </div>
+              <p>
+                Выберите нужный блок. Клинические ситуации, оргдиагностика, методика и личные результаты теперь четко разделены.
+              </p>
             </div>
 
-            <div className="section-hub-grid">
-              <div className="hub-card org-hub">
-                <span className="hub-tag" style={{ background: "#2d5a7b" }}>27 кейсов</span>
-                <h3>Организационная психология и HR-консалтинг</h3>
-                <p>
-                  Управление изменениями, преодоление сопротивления цифровизации, профилактика
-                  выгорания при кранчах, синдром выживших после сокращений, психологическая
-                  безопасность по Эдмондсон, ассессмент лидеров и межкультурные коммуникации.
-                </p>
-                <div className="hub-meta">
-                  <span>Темы: Лидерство • Выгорание • Культура • Переходы</span>
+            <div className="section-hub">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDirection("org");
+                  navigateTo("catalog");
+                }}
+              >
+                <span>01</span>
+                <div>
+                  <b>Организационная психология</b>
+                  <p>27 кейсов: управление изменениями, выгорание, кранчи, оргкультура и ассессмент лидеров.</p>
+                  <small>27 кейсов · 101 задание</small>
                 </div>
-                <button
-                  type="button"
-                  className="primary-button"
-                  style={{ background: "#2d5a7b", borderColor: "#2d5a7b" }}
-                  onClick={() => {
-                    setSelectedDirection("org");
-                    navigateTo("catalog");
-                  }}
-                >
-                  <span>Организационные кейсы →</span>
-                </button>
-              </div>
+                <i>→</i>
+              </button>
 
-              <div className="hub-card clin-hub">
-                <span className="hub-tag" style={{ background: "#c74b35" }}>10 кейсов</span>
-                <h3>Клиническая и консультативная психология</h3>
-                <p>
-                  Кризисная интервенция, оценка суицидального риска, дифференциальная диагностика,
-                  работа с паническими атаками, ОКР, подростковым самоповреждением, травмой,
-                  аддиктивным поведением и нейроразнообразием по протоколам NICE и ВОЗ.
-                </p>
-                <div className="hub-meta">
-                  <span>Темы: Кризис • Травма • ОКР • Депрессия • Этический кодекс</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDirection("clin");
+                  navigateTo("catalog");
+                }}
+              >
+                <span>02</span>
+                <div>
+                  <b>Клиническое консультирование</b>
+                  <p>10 кейсов: кризисная помощь, оценка рисков, ОКР, подростковое самоповреждение и аддикции.</p>
+                  <small>10 кейсов · 50 заданий</small>
                 </div>
-                <button
-                  type="button"
-                  className="primary-button"
-                  style={{ background: "#c74b35", borderColor: "#c74b35" }}
-                  onClick={() => {
-                    setSelectedDirection("clin");
-                    navigateTo("catalog");
-                  }}
-                >
-                  <span>Клинические кейсы →</span>
-                </button>
-              </div>
+                <i>→</i>
+              </button>
+
+              <button type="button" onClick={() => navigateTo("guide")}>
+                <span>03</span>
+                <div>
+                  <b>Как работать с кейсом</b>
+                  <p>Метод КАРТА, правила сильного ответа и разбор типичных ошибок.</p>
+                  <small>4 шага · чек-лист</small>
+                </div>
+                <i>→</i>
+              </button>
+
+              <button type="button" onClick={() => navigateTo("sources")}>
+                <span>04</span>
+                <div>
+                  <b>Источники и стандарты</b>
+                  <p>33 официальных руководства ВОЗ, NICE, РПО, APA, ISO и CIPD.</p>
+                  <small>33 документа · открытые ссылки</small>
+                </div>
+                <i>→</i>
+              </button>
             </div>
           </section>
 
-          {/* Featured Cases */}
-          <section className="featured-cases-section">
-            <div className="home-sections-heading">
-              <span className="kicker">Рекомендуемые сценарии</span>
-              <h2>Актуальные кейсы для тренировки</h2>
+          <section className="home-start">
+            <div>
+              <p className="kicker light">Быстрый старт</p>
+              <h2>Готовы проверить себя на первом кейсе?</h2>
+              <p>Начните с учебной ситуации и пройдите все вопросы.</p>
             </div>
-
-            <div className="cases-grid">
-              {cases.slice(10, 13).map((c) => (
-                <div key={c.id} className="case-card">
-                  <div className="case-card-header">
-                    <span className="case-index" style={{ background: c.accent }}>
-                      {c.index}
-                    </span>
-                    <button
-                      type="button"
-                      className={`fav-btn ${favorites.includes(c.id) ? "active" : ""}`}
-                      onClick={(e) => toggleFavorite(c.id, e)}
-                      title="В избранное"
-                    >
-                      ★
-                    </button>
-                  </div>
-                  <span className="case-category-pill">{c.category}</span>
-                  <h3>{c.title}</h3>
-                  <p>{c.summary}</p>
-                  <div className="case-card-footer">
-                    <span className="case-level">{c.level}</span>
-                    <span className="case-time">{c.time}</span>
-                    <button
-                      type="button"
-                      className="card-action-btn"
-                      onClick={() => {
-                        setCurrentCaseId(c.id);
-                        navigateTo("case");
-                      }}
-                    >
-                      К кейсу →
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => navigateTo("catalog")}
+              >
+                Выбрать кейс <ArrowIcon />
+              </button>
             </div>
           </section>
-        </main>
+        </>
       )}
 
       {/* VIEW: CATALOG */}
       {tab === "catalog" && (
-        <main className="catalog-view">
-          <div className="catalog-header">
-            <div className="catalog-title-group">
-              <span className="kicker">Банк учебных и практических ситуаций</span>
-              <h1>Каталог психологических кейсов</h1>
+        <section className="catalog-page">
+          <div className="page-hero page-hero-compact">
+            <div>
+              <p className="kicker">Практикум · 2026</p>
+              <h1>Каталог кейсов</h1>
               <p>
-                В базе представлено 37 структурированных кейсов с методическими вопросами,
-                автоматической оценкой ответов и экспертными эталонами.
+                Выберите ситуацию, изучите вводные данные и последовательно ответьте на профессиональные вопросы. Черновик сохранится на этом устройстве.
               </p>
             </div>
+            <div className="page-hero-stats">
+              <span>
+                <b>{cases.length}</b> кейсов
+              </span>
+              <span>
+                <b>{categoriesForDirection.length - 1}</b> тем
+              </span>
+              <span>
+                <b>100</b> баллов
+              </span>
+            </div>
           </div>
 
-          {/* Direction Filter Tabs */}
-          <div className="direction-tabs-container">
-            <button
-              type="button"
-              className={`direction-tab-btn ${selectedDirection === "all" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedDirection("all");
-                setSelectedCategory("Все");
-              }}
-            >
-              <span>Все направления</span>
-              <span className="direction-tab-badge">{cases.length}</span>
-            </button>
-            <button
-              type="button"
-              className={`direction-tab-btn ${selectedDirection === "org" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedDirection("org");
-                setSelectedCategory("Все");
-              }}
-            >
-              <span>Организационная психология</span>
-              <span className="direction-tab-badge">27</span>
-            </button>
-            <button
-              type="button"
-              className={`direction-tab-btn ${selectedDirection === "clin" ? "active" : ""}`}
-              onClick={() => {
-                setSelectedDirection("clin");
-                setSelectedCategory("Все");
-              }}
-            >
-              <span>Клиническое консультирование</span>
-              <span className="direction-tab-badge">10</span>
-            </button>
-          </div>
-
-          {/* Search & Select Controls */}
-          <div className="catalog-controls">
-            <div className="catalog-search-wrap">
-              <input
-                type="text"
-                className="catalog-search-input"
-                placeholder="Поиск по названию, компании, дилемме или компетенциям…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
+          <div className="catalog-content">
+            <div className="catalog-toolbar">
+              {/* Direction Tabs */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
                 <button
                   type="button"
-                  className="catalog-search-clear"
-                  onClick={() => setSearchQuery("")}
-                  title="Очистить поиск"
+                  className="primary-button"
+                  style={{
+                    padding: "7px 14px",
+                    fontSize: "12px",
+                    background: selectedDirection === "all" ? "var(--ink)" : "var(--surface)",
+                    color: selectedDirection === "all" ? "var(--paper)" : "var(--ink)",
+                    borderColor: "var(--line)",
+                  }}
+                  onClick={() => {
+                    setSelectedDirection("all");
+                    setSelectedCategory("Все");
+                  }}
                 >
-                  ✕
+                  Все кейсы ({cases.length})
                 </button>
-              )}
+                <button
+                  type="button"
+                  className="primary-button"
+                  style={{
+                    padding: "7px 14px",
+                    fontSize: "12px",
+                    background: selectedDirection === "org" ? "#2d5a7b" : "var(--surface)",
+                    color: selectedDirection === "org" ? "#fff" : "var(--ink)",
+                    borderColor: "var(--line)",
+                  }}
+                  onClick={() => {
+                    setSelectedDirection("org");
+                    setSelectedCategory("Все");
+                  }}
+                >
+                  Организационная психология (27)
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  style={{
+                    padding: "7px 14px",
+                    fontSize: "12px",
+                    background: selectedDirection === "clin" ? "var(--ochre)" : "var(--surface)",
+                    color: selectedDirection === "clin" ? "#fff" : "var(--ink)",
+                    borderColor: "var(--line)",
+                  }}
+                  onClick={() => {
+                    setSelectedDirection("clin");
+                    setSelectedCategory("Все");
+                  }}
+                >
+                  Клиническое консультирование (10)
+                </button>
+              </div>
+
+              {/* Search Box */}
+              <div style={{ position: "relative", marginBottom: "16px" }}>
+                <input
+                  type="text"
+                  placeholder="Поиск по названию, компании или компетенциям…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 36px 10px 14px",
+                    border: "1px solid var(--line)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--surface)",
+                    font: "500 13px var(--font-geist-sans)",
+                    color: "var(--ink)",
+                    outline: "none",
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--muted)",
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <b>Фильтр по теме</b>
+                <span>Показано: {filteredCases.length} из {cases.length}</span>
+              </div>
+
+              <div className="filter-row" aria-label="Фильтры каталога">
+                {categoriesForDirection.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={selectedCategory === cat ? "selected" : ""}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <select
-              className="catalog-select"
-              value={selectedLevel}
-              onChange={(e) => setSelectedLevel(e.target.value)}
-              aria-label="Фильтр по сложности"
-            >
-              <option value="all">Все уровни сложности</option>
-              <option value="Базовый">Базовый</option>
-              <option value="Продвинутый">Продвинутый</option>
-              <option value="Экспертный">Экспертный</option>
-            </select>
-
-            <select
-              className="catalog-select"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              aria-label="Фильтр по статусу"
-            >
-              <option value="all">Все статусы</option>
-              <option value="solved">Только решённые</option>
-              <option value="draft">В черновике</option>
-              <option value="fav">Только избранные ★</option>
-            </select>
-
-            <select
-              className="catalog-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              aria-label="Сортировка"
-            >
-              <option value="index">По номеру (по порядку)</option>
-              <option value="level">По уровню сложности</option>
-              <option value="time">По времени решения</option>
-            </select>
-          </div>
-
-          {/* Category Filter Pills */}
-          <div className="category-pills-bar">
-            {availableCategories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Case Cards Grid */}
-          <div className="catalog-results-info">
-            <span>Найдено кейсов: <b>{filteredCases.length}</b> из {cases.length}</span>
-          </div>
-
-          <div className="cases-grid">
-            {filteredCases.map((c) => {
-              const best = bestAttempts.get(c.id);
-              const isFav = favorites.includes(c.id);
-
-              return (
-                <div key={c.id} className="case-card">
-                  <div className="case-card-header">
-                    <span className="case-index" style={{ background: c.accent }}>
-                      {c.index}
+            <div className="case-grid">
+              {filteredCases.map((e) => (
+                <article
+                  key={e.id}
+                  className="case-card"
+                  style={{ "--case-accent": e.accent }}
+                >
+                  <div className="case-topline">
+                    <span>КЕЙС {e.index}</span>
+                    <span className={`case-status ${bestAttempts.get(e.id)?.passed ? "completed" : ""}`}>
+                      {bestAttempts.has(e.id) ? `${bestAttempts.get(e.id)?.score}/100` : "ДОСТУПЕН"}
                     </span>
-                    <div className="case-header-right">
-                      {best && (
-                        <span className={`status-badge-inline ${best.passed ? "passed" : "retry"}`}>
-                          {best.score}/100
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className={`fav-btn ${isFav ? "active" : ""}`}
-                        onClick={(e) => toggleFavorite(c.id, e)}
-                        title={isFav ? "Удалить из избранного" : "Добавить в избранное"}
-                      >
-                        ★
-                      </button>
-                    </div>
                   </div>
-
-                  <div className="case-card-meta">
-                    <span className="direction-label">{c.direction}</span>
-                    <span className="case-category-pill">{c.category}</span>
+                  <div className="case-sigil" aria-hidden="true">
+                    <span>{e.index}</span>
                   </div>
-
-                  <h3>{c.title}</h3>
-                  <p>{c.summary}</p>
-
-                  <div className="competencies-chips">
-                    {c.competencies &&
-                      c.competencies.slice(0, 3).map((comp, i) => (
-                        <span key={i} className="comp-chip">
-                          {comp}
-                        </span>
-                      ))}
+                  <p className="case-direction">{e.direction}</p>
+                  <h3>{e.title}</h3>
+                  <p className="case-summary">{e.summary}</p>
+                  <div className="case-meta">
+                    <span>{e.level}</span>
+                    <i></i>
+                    <span>{e.time}</span>
+                    <i></i>
+                    <span>{e.questions.length} заданий</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => openCase(e.id)}
+                    aria-label={`Открыть кейс: ${e.title}`}
+                  >
+                    Открыть кейс <span>→</span>
+                  </button>
+                </article>
+              ))}
+            </div>
 
-                  <div className="case-card-footer">
-                    <div className="meta-specs">
-                      <span className="case-level">{c.level}</span>
-                      <span className="case-time">{c.time}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="primary-button card-btn"
-                      onClick={() => {
-                        setCurrentCaseId(c.id);
-                        navigateTo("case");
-                      }}
-                    >
-                      <span>Решать</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {filteredCases.length === 0 && (
-            <div className="empty-state">
-              <h3>По заданным параметрам кейсы не найдены</h3>
-              <p>Попробуйте сбросить поисковый запрос или выбрать категорию «Все».</p>
+            <div className="catalog-support">
+              <div>
+                <p className="kicker">Нужна опора?</p>
+                <h2>Перед первым кейсом изучите метод КАРТА</h2>
+                <p>
+                  Он помогает отделить факты от гипотез, не пропустить риск и выстроить план действий в правильном порядке.
+                </p>
+              </div>
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => {
-                  setSelectedCategory("Все");
-                  setSelectedLevel("all");
-                  setSelectedStatus("all");
-                  setSearchQuery("");
-                }}
+                onClick={() => navigateTo("guide")}
               >
-                <span>Сбросить фильтры</span>
+                Открыть руководство <span>→</span>
               </button>
             </div>
-          )}
-        </main>
+          </div>
+        </section>
       )}
 
-      {/* VIEW: CASE DETAIL */}
+      {/* VIEW: CASE INTRO */}
       {tab === "case" && (
-        <main className="case-detail-view">
-          <div className="case-detail-container">
+        <section className="case-intro-page" style={{ "--case-accent": currentCase.accent }}>
+          <div className="case-intro-head">
             <button
               type="button"
               className="back-link"
               onClick={() => navigateTo("catalog")}
             >
-              ← Вернуться в каталог
+              ← Каталог кейсов
             </button>
+            <div className="case-index-big">
+              {currentCase.index} <span>/ {String(cases.length).padStart(3, "0")}</span>
+            </div>
+          </div>
 
-            <div className="case-detail-header">
-              <div className="case-title-row">
-                <span className="case-index-hero" style={{ background: currentCase.accent }}>
-                  {currentCase.index}
-                </span>
-                <div>
-                  <span className="direction-label">{currentCase.direction}</span>
-                  <h1>{currentCase.title}</h1>
+          <div className="case-intro-grid">
+            <div className="case-intro-main">
+              <p className="case-direction">{currentCase.direction}</p>
+              <h1>{currentCase.title}</h1>
+              <div className="case-tags">
+                <span>{currentCase.level}</span>
+                <span>{currentCase.time}</span>
+                <span>{currentCase.questions.length} заданий</span>
+              </div>
+
+              <div className="brief-block">
+                <div className="brief-label">Вводные данные</div>
+                <p>{currentCase.facts[0]}</p>
+                {currentCase.quote && <blockquote>«{currentCase.quote}»</blockquote>}
+                {currentCase.facts.slice(1).map((f, i) => (
+                  <p key={i}>{f}</p>
+                ))}
+              </div>
+
+              {currentCase.warning && (
+                <div className="case-warning">
+                  <b>Важно</b>
+                  <span>{currentCase.warning}</span>
                 </div>
-                <button
-                  type="button"
-                  className={`fav-btn-hero ${favorites.includes(currentCase.id) ? "active" : ""}`}
-                  onClick={(e) => toggleFavorite(currentCase.id, e)}
-                  title="В избранное"
-                >
-                  ★
-                </button>
-              </div>
+              )}
 
-              <div className="case-meta-row">
-                <span className="case-badge">{currentCase.category}</span>
-                <span className="case-badge">{currentCase.level}</span>
-                <span className="case-badge">{currentCase.time}</span>
-                {bestAttempts.get(currentCase.id) && (
-                  <span className="case-badge success">
-                    Лучший результат: {bestAttempts.get(currentCase.id).score}/100
-                  </span>
-                )}
-              </div>
+              {currentBenchmark && (
+                <section className="topic-guide" aria-labelledby="topic-guide-title">
+                  <div className="topic-guide-head">
+                    <div>
+                      <p className="kicker">Кратко о теме</p>
+                      <h2 id="topic-guide-title">Перед началом разбора</h2>
+                    </div>
+                    <span>Методические ориентиры</span>
+                  </div>
+
+                  <div className="topic-guide-grid">
+                    <article>
+                      <b>Что важно заметить</b>
+                      <p>{currentBenchmark.focus}</p>
+                    </article>
+                    <article>
+                      <b>Логика рассуждения</b>
+                      <p>{currentBenchmark.logic}</p>
+                    </article>
+                    <article>
+                      <b>Чего избегать</b>
+                      <p>{currentBenchmark.avoid}</p>
+                    </article>
+                  </div>
+
+                  <div className="topic-terms">
+                    <b>Ключевые понятия:</b>
+                    {currentBenchmark.terms.map((term, i) => (
+                      <span key={i}>{term}</span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {currentCase.sourceIds && currentCase.sourceIds.length > 0 && (
+                <div className="case-provenance">
+                  <p className="kicker">Научно-методическая основа кейса</p>
+                  <p>
+                    Сценарий составлен специально для обучения. Критерии оценки и ориентиры ответа разработаны на основе документов:
+                  </p>
+                  <div>
+                    {getCaseSources(currentCase).map((s) => (
+                      <a
+                        key={s.id}
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {s.org} · {s.year} {s.language === "RU" ? "· на русском" : ""} <span>↗</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {currentCase.warning && (
-              <div className="warning-banner" role="alert">
-                <b>Внимание:</b> {currentCase.warning}
-              </div>
-            )}
+            <aside className="case-intro-aside">
+              <p className="kicker">Матрица оценки</p>
+              <h2>Что будет проверяться</h2>
 
-            {currentCase.quote && (
-              <blockquote className="case-quote">
-                «{currentCase.quote}»
-              </blockquote>
-            )}
-
-            <section className="case-facts-section">
-              <h2>Факты и контекст ситуации</h2>
-              <div className="facts-list">
-                {currentCase.facts.map((fact, i) => (
-                  <div key={i} className="fact-item">
-                    <span className="fact-num">{String(i + 1).padStart(2, "0")}</span>
-                    <p>{fact}</p>
+              <div className="rubric-list">
+                {currentCase.questions.map((q, i) => (
+                  <div key={i}>
+                    <span>{String(i + 1).padStart(2, "0")}</span>
+                    <b>{q.dimension || q.short}</b>
+                    <em>{q.max} баллов</em>
                   </div>
                 ))}
               </div>
-            </section>
 
-            <section className="case-competencies-section">
-              <h3>Оцениваемые профессиональные компетенции</h3>
-              <div className="competencies-chips large">
-                {currentCase.competencies &&
-                  currentCase.competencies.map((comp, i) => (
-                    <span key={i} className="comp-chip">
-                      {comp}
-                    </span>
-                  ))}
+              <div className="competency-chips">
+                {currentCase.competencies.map((comp, i) => (
+                  <span key={i}>{comp}</span>
+                ))}
               </div>
-            </section>
 
-            <div className="case-start-actions">
+              {hasDraft && (
+                <button
+                  type="button"
+                  className="primary-button full"
+                  onClick={() => startPractice(true)}
+                >
+                  Продолжить черновик <ArrowIcon />
+                </button>
+              )}
+
               <button
                 type="button"
-                className="primary-button large-btn"
-                onClick={() => navigateTo("practice")}
+                className={hasDraft ? "secondary-button full" : "primary-button full"}
+                onClick={() => startPractice(false)}
               >
-                <span>Начать решение кейса →</span>
+                {hasDraft ? "Начать заново" : "Начать разбор"} <ArrowIcon />
               </button>
 
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={clearDraft}
-              >
-                <span>Сбросить черновик</span>
-              </button>
-            </div>
+              <small>
+                Ответы и результаты сохраняются только в браузере на этом устройстве.
+              </small>
+            </aside>
           </div>
-        </main>
+        </section>
       )}
 
       {/* VIEW: PRACTICE */}
       {tab === "practice" && (
-        <main className="practice-view">
-          {/* Top Sticky Bar: Timer, Auto-Save, View Mode & Export */}
-          <div className="practice-top-bar">
-            <div className="top-bar-left">
-              <button
-                type="button"
-                className="back-btn-sm"
-                onClick={() => navigateTo("case")}
-              >
-                ← К описанию
-              </button>
-              <span className="case-bar-title">
-                <b>Кейс {currentCase.index}:</b> {currentCase.title}
-              </span>
+        <section className="practice-page" style={{ "--case-accent": currentCase.accent }}>
+          <aside className="practice-sidebar">
+            <div>
+              <p className="case-direction">Кейс {currentCase.index}</p>
+              <h2>{currentCase.title}</h2>
             </div>
 
-            <div className="top-bar-middle">
-              {/* Timer */}
-              <div className={`timer-pill ${timerSeconds < 300 ? "urgent" : ""}`}>
+            <ol>
+              {currentCase.questions.map((q, i) => {
+                const isCurrent = i === currentStep;
+                const isDone = (answers[i] || "").trim().length >= 40;
+                return (
+                  <li key={i} className={`${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}>
+                    <button type="button" onClick={() => setCurrentStep(i)}>
+                      <span>{i + 1}</span>
+                      <b>{q.short || `Вопрос ${i + 1}`}</b>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+
+            {/* Quick Toolbox in Sidebar */}
+            <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div
+                className={`timer-pill ${timerSeconds < 300 ? "urgent" : ""}`}
+                style={{ width: "fit-content" }}
+              >
                 <span>⏱ {formatTimer(timerSeconds)}</span>
                 <button
                   type="button"
@@ -1048,592 +1037,369 @@ export default function Page() {
                 </button>
               </div>
 
-              {lastSavedTime && (
-                <span className="save-status-pill">
-                  💾 Сохранено {lastSavedTime}
-                </span>
-              )}
-            </div>
-
-            <div className="top-bar-right">
-              <div className="view-mode-toggle">
-                <button
-                  type="button"
-                  className={`toggle-sm-btn ${viewMode === "stepper" ? "active" : ""}`}
-                  onClick={() => setViewMode("stepper")}
-                >
-                  По шагам
-                </button>
-                <button
-                  type="button"
-                  className={`toggle-sm-btn ${viewMode === "all" ? "active" : ""}`}
-                  onClick={() => setViewMode("all")}
-                >
-                  Все вопросы
-                </button>
-              </div>
-
               <button
                 type="button"
-                className="icon-action-btn"
-                onClick={copySolution}
-                title="Скопировать всё решение в буфер обмена"
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onClick={() => setIsContextDrawerOpen(!isContextDrawerOpen)}
               >
-                📋 Копировать
+                📖 {isContextDrawerOpen ? "Скрыть факты кейса" : "Показать факты кейса"}
               </button>
+
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    color: "#fff",
+                    padding: "6px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                  onClick={copySolution}
+                  title="Скопировать всё решение"
+                >
+                  📋 Копия
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    color: "#fff",
+                    padding: "6px",
+                    borderRadius: "4px",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                  onClick={downloadSolution}
+                  title="Скачать решение как Markdown"
+                >
+                  📥 .md
+                </button>
+              </div>
+            </div>
+
+            <div className="progress-summary">
+              <span>Заполнено</span>
+              <b>{answeredCount} / {currentCase.questions.length}</b>
+              <div>
+                <i style={{ width: `${(answeredCount / currentCase.questions.length) * 100}%` }}></i>
+              </div>
+            </div>
+          </aside>
+
+          <div className="question-workspace">
+            {isContextDrawerOpen && (
+              <div className="context-panel">
+                <div
+                  className="context-panel-header"
+                  onClick={() => setIsContextDrawerOpen(false)}
+                >
+                  <span className="context-panel-title">📋 Факты ситуации (свернуть)</span>
+                  <span>✕</span>
+                </div>
+                <div className="facts-list compact">
+                  {currentCase.facts.map((fact, i) => (
+                    <p key={i}><b>{i + 1}.</b> {fact}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="question-count">
+              Задание {String(currentStep + 1).padStart(2, "0")}{" "}
+              <span>/ {String(currentCase.questions.length).padStart(2, "0")}</span>
+            </div>
+
+            <h1>{currentCase.questions[currentStep].title}</h1>
+            <p className="question-prompt">{currentCase.questions[currentStep].prompt}</p>
+
+            <label htmlFor={`answer-${currentStep}`}>Ваш профессиональный ответ</label>
+
+            <div className="textarea-wrap">
+              <textarea
+                id={`answer-${currentStep}`}
+                rows={10}
+                placeholder={currentCase.questions[currentStep].placeholder}
+                value={answers[currentStep] || ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAnswers((prev) => {
+                    const next = [...prev];
+                    next[currentStep] = val;
+                    return next;
+                  });
+                }}
+              ></textarea>
+              <span>
+                {(answers[currentStep] || "").length < 40
+                  ? `${(answers[currentStep] || "").length} симв. (мин. 40)`
+                  : `${(answers[currentStep] || "").length} симв.`}
+              </span>
+            </div>
+
+            <div className="question-hint">
+              <b>Методический фокус:</b> {currentCase.questions[currentStep].hint}
+            </div>
+
+            <div className="question-actions">
               <button
                 type="button"
-                className="icon-action-btn"
-                onClick={downloadSolution}
-                title="Скачать решение как Markdown"
+                className="secondary-button"
+                disabled={currentStep === 0}
+                onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
               >
-                📥 Скачать .md
+                ← Предыдущее
               </button>
-            </div>
-          </div>
 
-          <div className="practice-layout">
-            {/* Left Stepper Sidebar */}
-            <aside className="practice-sidebar" style={{ "--case-accent": currentCase.accent }}>
-              <span className="case-direction">{currentCase.direction}</span>
-              <h2>{currentCase.title}</h2>
-
-              <ol>
-                {currentCase.questions.map((q, idx) => {
-                  const isDone = (answers[idx] || "").trim().length >= 40;
-                  const isCurrent = currentStep === idx && viewMode === "stepper";
-
-                  return (
-                    <li
-                      key={idx}
-                      className={`${isCurrent ? "current" : ""} ${isDone ? "done" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentStep(idx);
-                          if (viewMode !== "stepper") setViewMode("stepper");
-                        }}
-                      >
-                        <span>{idx + 1}</span>
-                        <b>{q.short || `Вопрос ${idx + 1}`}</b>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-
-              <div className="progress-summary">
-                <span>Заполнено вопросов</span>
-                <b>
-                  {answers.filter((a) => (a || "").trim().length >= 40).length} из{" "}
-                  {currentCase.questions.length}
-                </b>
-                <div>
-                  <i
-                    style={{
-                      width: `${(answers.filter((a) => (a || "").trim().length >= 40).length / currentCase.questions.length) * 100}%`
-                    }}
-                  ></i>
-                </div>
-              </div>
-
-              <div className="sidebar-toolbox">
+              {currentStep < currentCase.questions.length - 1 ? (
                 <button
                   type="button"
-                  className="sidebar-tool-btn"
-                  onClick={() => setIsContextDrawerOpen(!isContextDrawerOpen)}
+                  className="primary-button"
+                  onClick={() => setCurrentStep((prev) => prev + 1)}
                 >
-                  📖 {isContextDrawerOpen ? "Скрыть факты кейса" : "Показать факты кейса"}
+                  Следующее задание →
                 </button>
+              ) : (
                 <button
                   type="button"
-                  className="sidebar-tool-btn danger"
-                  onClick={clearDraft}
-                >
-                  🗑 Очистить черновик
-                </button>
-              </div>
-            </aside>
-
-            {/* Workspace Area */}
-            <section className="question-workspace">
-              {/* Collapsible Context Panel (Accessible on demand) */}
-              {isContextDrawerOpen && (
-                <div className="context-panel">
-                  <div
-                    className="context-panel-header"
-                    onClick={() => setIsContextDrawerOpen(false)}
-                  >
-                    <span className="context-panel-title">
-                      📋 Исходные факты ситуации (свернуть)
-                    </span>
-                    <span>✕</span>
-                  </div>
-                  <div className="facts-list compact">
-                    {currentCase.facts.map((fact, i) => (
-                      <p key={i}>
-                        <b>{i + 1}.</b> {fact}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* STEPPER MODE */}
-              {viewMode === "stepper" && (
-                <div className="stepper-content">
-                  {(() => {
-                    const q = currentCase.questions[currentStep];
-                    const currentAnswer = answers[currentStep] || "";
-                    const charCount = currentAnswer.length;
-                    const wordCount = currentAnswer.trim() ? currentAnswer.trim().split(/\s+/).length : 0;
-
-                    return (
-                      <div className="single-question-box">
-                        <div className="question-count">
-                          Вопрос {currentStep + 1} из {currentCase.questions.length} • Максимум {q.max} баллов
-                        </div>
-                        <h1>{q.title}</h1>
-                        <p className="question-prompt">{q.prompt}</p>
-
-                        <div className="question-hint">
-                          <b>Методический фокус:</b> {q.hint}
-                        </div>
-
-                        <div className="textarea-header">
-                          <label htmlFor={`answer-${currentStep}`}>
-                            Ваш профессиональный ответ:
-                          </label>
-                          <span
-                            className={`word-badge ${charCount < 40 ? "short" : charCount < 150 ? "good" : "deep"}`}
-                          >
-                            {charCount < 40
-                              ? "Кратко (<40 симв.)"
-                              : charCount < 150
-                              ? "Базовый ответ"
-                              : "Развернутый ответ"} ({wordCount} слов, {charCount} симв.)
-                          </span>
-                        </div>
-
-                        <div className="textarea-wrap">
-                          <textarea
-                            id={`answer-${currentStep}`}
-                            rows={10}
-                            placeholder={q.placeholder}
-                            value={currentAnswer}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAnswers((prev) => {
-                                const next = [...prev];
-                                next[currentStep] = val;
-                                return next;
-                              });
-                            }}
-                          ></textarea>
-                        </div>
-
-                        <div className="question-stepper-nav">
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            disabled={currentStep === 0}
-                            onClick={() => setCurrentStep((prev) => Math.max(0, prev - 1))}
-                          >
-                            ← Предыдущий вопрос
-                          </button>
-
-                          {currentStep < currentCase.questions.length - 1 ? (
-                            <button
-                              type="button"
-                              className="primary-button"
-                              onClick={() => setCurrentStep((prev) => prev + 1)}
-                            >
-                              <span>Следующий вопрос →</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="primary-button highlight"
-                              onClick={handleEvaluate}
-                            >
-                              <span>Завершить и оценить решение ✓</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* ALL QUESTIONS MODE */}
-              {viewMode === "all" && (
-                <div className="all-questions-content">
-                  {currentCase.questions.map((q, idx) => {
-                    const currentAnswer = answers[idx] || "";
-                    const charCount = currentAnswer.length;
-                    const wordCount = currentAnswer.trim() ? currentAnswer.trim().split(/\s+/).length : 0;
-
-                    return (
-                      <div key={idx} className="question-block-card">
-                        <div className="question-count">
-                          Вопрос {idx + 1} из {currentCase.questions.length} • {q.max} баллов
-                        </div>
-                        <h2>{q.title}</h2>
-                        <p className="question-prompt">{q.prompt}</p>
-                        <div className="question-hint">
-                          <b>Совет:</b> {q.hint}
-                        </div>
-
-                        <div className="textarea-header">
-                          <label htmlFor={`all-ans-${idx}`}>Ответ:</label>
-                          <span
-                            className={`word-badge ${charCount < 40 ? "short" : charCount < 150 ? "good" : "deep"}`}
-                          >
-                            {charCount < 40 ? "Кратко" : charCount < 150 ? "Базовый" : "Развернутый"} ({wordCount} сл., {charCount} зн.)
-                          </span>
-                        </div>
-
-                        <div className="textarea-wrap">
-                          <textarea
-                            id={`all-ans-${idx}`}
-                            rows={7}
-                            placeholder={q.placeholder}
-                            value={currentAnswer}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setAnswers((prev) => {
-                                const next = [...prev];
-                                next[idx] = val;
-                                return next;
-                              });
-                            }}
-                          ></textarea>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Self-Check Checklist */}
-              <div className="self-check-card">
-                <h4>Чеклист самопроверки перед отправкой:</h4>
-                <label className="self-check-item">
-                  <input
-                    type="checkbox"
-                    checked={selfCheck.facts}
-                    onChange={(e) => setSelfCheck({ ...selfCheck, facts: e.target.checked })}
-                  />
-                  <span>Отделил объективные факты от гипотез, домыслов и субъективных оценок</span>
-                </label>
-                <label className="self-check-item">
-                  <input
-                    type="checkbox"
-                    checked={selfCheck.system}
-                    onChange={(e) => setSelfCheck({ ...selfCheck, system: e.target.checked })}
-                  />
-                  <span>Учёл организационный / семейный контекст и системные взаимосвязи</span>
-                </label>
-                <label className="self-check-item">
-                  <input
-                    type="checkbox"
-                    checked={selfCheck.ethics}
-                    onChange={(e) => setSelfCheck({ ...selfCheck, ethics: e.target.checked })}
-                  />
-                  <span>Проверил границы роли консультанта, этику и конфиденциальность</span>
-                </label>
-                <label className="self-check-item">
-                  <input
-                    type="checkbox"
-                    checked={selfCheck.solution}
-                    onChange={(e) => setSelfCheck({ ...selfCheck, solution: e.target.checked })}
-                  />
-                  <span>Сформулировал измеримые критерии успеха и реалистичные шаги решения</span>
-                </label>
-              </div>
-
-              {/* Final Submit Bar */}
-              <div className="submit-bar">
-                <button
-                  type="button"
-                  className="primary-button large-btn full"
+                  className="primary-button"
                   onClick={handleEvaluate}
                 >
-                  <span>Проверить решение и открыть эталонный разбор →</span>
+                  Завершить и проверить кейс →
                 </button>
-              </div>
-            </section>
+              )}
+            </div>
           </div>
-        </main>
+        </section>
       )}
 
       {/* VIEW: RESULT */}
       {tab === "result" && evaluation && (
-        <main className="result-view">
-          <div className="result-container">
-            <button
-              type="button"
-              className="back-link"
-              onClick={() => navigateTo("catalog")}
-            >
-              ← Вернуться в каталог
-            </button>
-
-            {/* Score Hero Card */}
-            <div className={`score-hero-card ${evaluation.passed ? "passed" : "retry"}`}>
-              <div className="score-hero-badge">
-                <b>{evaluation.score}</b>
-                <span>из 100 баллов</span>
-              </div>
-              <div className="score-hero-info">
-                <span className="kicker">Результаты автоматической экспертизы</span>
-                <h2>
-                  {evaluation.score >= 80
-                    ? "Отличный уровень решения!"
-                    : evaluation.score >= 60
-                    ? "Уверенное владение компетенциями"
-                    : "Базовый уровень — требуется доработка"}
-                </h2>
-                <p>
-                  Кейс <b>{currentCase.index}</b>: «{currentCase.title}». Дата проверки: {evaluation.date}.
-                </p>
-                <div className="score-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => navigateTo("practice")}
-                  >
-                    <span>Доработать решение</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => {
-                      const curIdx = cases.findIndex((c) => c.id === currentCase.id);
-                      if (curIdx < cases.length - 1) {
-                        setCurrentCaseId(cases[curIdx + 1].id);
-                        navigateTo("case");
-                      } else {
-                        navigateTo("catalog");
-                      }
-                    }}
-                  >
-                    <span>Следующий кейс →</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={downloadSolution}
-                  >
-                    <span>Скачать отчёт (.md)</span>
-                  </button>
-                </div>
-              </div>
+        <section className="result-page" style={{ "--case-accent": currentCase.accent }}>
+          <div className="result-hero">
+            <div>
+              <p className="kicker light">Результат · кейс {currentCase.index}</p>
+              <h1>{evaluation.passed ? "Кейс пройден" : "Нужна доработка"}</h1>
+              <p>
+                {evaluation.passed
+                  ? "Критические риски учтены, а профессиональная логика выдержана."
+                  : "В ответе есть рабочая основа, но неполная логика или пропуски пока не позволяют засчитать кейс."}
+              </p>
             </div>
 
-            {/* Dimensions Progress Bars */}
-            <section className="dimensions-section">
-              <h3>Оценка по ключевым измерениям</h3>
-              <div className="dimensions-grid">
-                {evaluation.dimensions.map((dim, i) => (
-                  <div key={i} className="dimension-bar-item">
-                    <div className="dim-bar-header">
-                      <b>{dim.name}</b>
-                      <span>{dim.percent}% ({dim.score}/{dim.max})</span>
-                    </div>
-                    <div className="dim-track">
-                      <div className="dim-fill" style={{ width: `${dim.percent}%` }}></div>
-                    </div>
-                  </div>
-                ))}
+            <div
+              className={`score-orbit ${evaluation.passed ? "pass" : "revise"}`}
+              style={{ "--score": `${3.6 * evaluation.score}deg` }}
+            >
+              <div>
+                <b>{evaluation.score}</b>
+                <span>/ 100</span>
               </div>
-            </section>
-
-            {/* Question by Question Feedback */}
-            <section className="feedbacks-section">
-              <h3>Детальный анализ ответов</h3>
-              <div className="feedbacks-list">
-                {evaluation.feedbacks.map((fb, i) => (
-                  <div key={i} className="feedback-card">
-                    <div className="fb-header">
-                      <span className="fb-q-num">Вопрос {i + 1}</span>
-                      <h4>{fb.title}</h4>
-                      <span className="fb-score">
-                        {fb.score} / {fb.max} баллов
-                      </span>
-                    </div>
-
-                    <div className="fb-user-answer">
-                      <b>Ваш ответ:</b>
-                      <p>{fb.userAnswer || "(Ответ не был заполнен)"}</p>
-                    </div>
-
-                    <div className="fb-notes">
-                      <div className="fb-note-item success">
-                        <b>Учтено:</b> {fb.note}
-                      </div>
-                      {fb.score < fb.max && (
-                        <div className="fb-note-item warning">
-                          <b>Рекомендация по углублению:</b> {fb.gap}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Full Reference Benchmark */}
-            {currentBenchmark && (
-              <section className="benchmark-card-box">
-                <div className="benchmark-header">
-                  <span className="kicker">Академический стандарт</span>
-                  <h2>Эталонный разбор кейса экспертом</h2>
-                </div>
-
-                <div className="benchmark-section">
-                  <div className="benchmark-label">🎯 Ключевой методологический фокус</div>
-                  <div className="benchmark-body">{currentBenchmark.focus}</div>
-                </div>
-
-                <div className="benchmark-section">
-                  <div className="benchmark-label">🧭 Пошаговая логика рассуждения</div>
-                  <div className="benchmark-body">{currentBenchmark.logic}</div>
-                </div>
-
-                <div className="benchmark-section">
-                  <div className="benchmark-label">⚠️ Типичные ошибки и когнитивные ловушки</div>
-                  <div className="benchmark-avoid-box">{currentBenchmark.avoid}</div>
-                </div>
-
-                <div className="benchmark-section">
-                  <div className="benchmark-label">📚 Ключевые профессиональные термины</div>
-                  <div className="benchmark-terms-list">
-                    {currentBenchmark.terms.map((term, i) => (
-                      <span key={i} className="benchmark-term-chip">
-                        {term}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
+            </div>
           </div>
-        </main>
+
+          <div className="result-body">
+            <div className="result-main">
+              {evaluation.criticalFlags && evaluation.criticalFlags.length > 0 && (
+                <div className="critical-panel">
+                  <div className="panel-title">
+                    <span>!</span>
+                    <div>
+                      <b>Критические пропуски</b>
+                      <small>Высокий общий балл не компенсирует угрозу безопасности или нарушение рамки</small>
+                    </div>
+                  </div>
+                  <ul>
+                    {evaluation.criticalFlags.map((flag, i) => (
+                      <li key={i}>{flag}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Score Breakdown Bars */}
+              <div className="score-bars-card">
+                <p className="kicker">Оценка по измерениям</p>
+                <div className="rubric-review">
+                  {evaluation.dimensions.map((dim, i) => (
+                    <div key={i} className="rubric-review-item">
+                      <div>
+                        <b>{dim.name}</b>
+                        <span>{dim.score} из {dim.max}</span>
+                      </div>
+                      <div>
+                        <i style={{ width: `${dim.percent}%` }}></i>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Full Benchmark Review */}
+              {currentBenchmark && (
+                <div className="benchmark-card" style={{ marginTop: "24px" }}>
+                  <p className="kicker">Эталонный разбор</p>
+                  <h2>Ориентир решения от эксперта</h2>
+
+                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
+                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
+                      🎯 Ключевой фокус
+                    </div>
+                    <p style={{ margin: 0, lineHeight: 1.6 }}>{currentBenchmark.focus}</p>
+                  </div>
+
+                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
+                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
+                      🧭 Логика рассуждения
+                    </div>
+                    <p style={{ margin: 0, lineHeight: 1.6 }}>{currentBenchmark.logic}</p>
+                  </div>
+
+                  <div className="benchmark-section" style={{ marginBottom: "16px" }}>
+                    <div className="benchmark-label" style={{ fontWeight: 700, color: "#dc2626", marginBottom: "4px" }}>
+                      ⚠️ Типичные ошибки и ловушки
+                    </div>
+                    <div className="benchmark-avoid-box" style={{ background: "#fef2f2", borderLeft: "4px solid #ef4444", padding: "10px 14px", borderRadius: "4px", color: "#991b1b" }}>
+                      {currentBenchmark.avoid}
+                    </div>
+                  </div>
+
+                  <div className="benchmark-section">
+                    <div className="benchmark-label" style={{ fontWeight: 700, color: "var(--case-accent, var(--ochre))", marginBottom: "4px" }}>
+                      📚 Ключевые понятия
+                    </div>
+                    <div className="topic-terms">
+                      {currentBenchmark.terms.map((t, i) => (
+                        <span key={i}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="result-aside">
+              <p className="kicker">Действия</p>
+              <h2>Что дальше</h2>
+
+              <button
+                type="button"
+                className="primary-button full"
+                onClick={() => navigateTo("practice")}
+              >
+                Доработать решение →
+              </button>
+
+              <button
+                type="button"
+                className="secondary-button full"
+                onClick={() => {
+                  const curIdx = cases.findIndex((c) => c.id === currentCase.id);
+                  if (curIdx < cases.length - 1) {
+                    openCase(cases[curIdx + 1].id);
+                  } else {
+                    navigateTo("catalog");
+                  }
+                }}
+              >
+                Следующий кейс →
+              </button>
+
+              <button
+                type="button"
+                className="secondary-button full"
+                onClick={downloadSolution}
+              >
+                Скачать отчёт (.md)
+              </button>
+
+              <button
+                type="button"
+                className="secondary-button full"
+                onClick={() => navigateTo("catalog")}
+              >
+                Все кейсы
+              </button>
+            </aside>
+          </div>
+        </section>
       )}
 
       {/* VIEW: PROFILE */}
       {tab === "profile" && (
-        <main className="profile-view">
-          <div className="profile-container">
-            <div className="profile-header">
-              <span className="kicker">Личный прогресс и статистика</span>
-              <h1>Кабинет практикующего специалиста</h1>
-              <p>Отслеживайте освоение профессиональных кейсов и историю решений.</p>
+        <section className="profile-page">
+          <div className="profile-heading">
+            <div>
+              <p className="kicker">Личный прогресс</p>
+              <h1>Профиль компетенций</h1>
+            </div>
+            <p>
+              История хранится локально на этом устройстве. Оценивайте не только балл: полезнее смотреть, какие блоки систематически проседают между разными кейсами.
+            </p>
+          </div>
+
+          <div className="profile-stats">
+            <div>
+              <small>Пройдено кейсов</small>
+              <b>{solvedCount}</b>
+              <span>из {cases.length} доступных</span>
+            </div>
+            <div>
+              <small>Лучший результат</small>
+              <b>{bestScore}</b>
+              <span>баллов из 100</span>
+            </div>
+            <div>
+              <small>Ослабленный блок</small>
+              <b>{weakestDimension ? `${weakestDimension.percent}%` : "—"}</b>
+              <span>{weakestDimension ? weakestDimension.name : "пока мало данных"}</span>
+            </div>
+          </div>
+
+          <div className="profile-content">
+            <div className="profile-dimensions">
+              <h2>Баланс по измерениям</h2>
+              {topDimensions.length > 0 ? (
+                topDimensions.map((d) => (
+                  <div key={d.name} className="dimension-row">
+                    <div>
+                      <span>{d.name}</span>
+                      <b>{d.percent}%</b>
+                    </div>
+                    <div>
+                      <i style={{ width: `${d.percent}%` }}></i>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="empty-hint">Пройдите хотя бы один кейс, чтобы увидеть раскладку компетенций.</p>
+              )}
             </div>
 
-            {/* Stats Metrics */}
-            <div className="profile-stats-grid">
-              <div className="stat-box">
-                <b>{cases.length}</b>
-                <span>Всего кейсов в базе</span>
-              </div>
-              <div className="stat-box">
-                <b>{solvedCount}</b>
-                <span>Решено успешно ({Math.round((solvedCount / cases.length) * 100)}%)</span>
-              </div>
-              <div className="stat-box">
-                <b>{averageScore}</b>
-                <span>Средний балл решений</span>
-              </div>
-              <div className="stat-box">
-                <b>{bestScore}</b>
-                <span>Лучший результат</span>
-              </div>
-            </div>
-
-            {/* Direction Progress */}
-            <div className="direction-progress-row">
-              <div className="dir-progress-card">
-                <h4>Организационная психология</h4>
-                <div className="dir-progress-bar">
-                  <div
-                    className="dir-progress-fill"
-                    style={{
-                      width: `${(solvedOrgCount / 27) * 100}%`,
-                      background: "#2d5a7b"
-                    }}
-                  ></div>
-                </div>
-                <span>{solvedOrgCount} из 27 кейсов освоено</span>
-              </div>
-
-              <div className="dir-progress-card">
-                <h4>Клиническое консультирование</h4>
-                <div className="dir-progress-bar">
-                  <div
-                    className="dir-progress-fill"
-                    style={{
-                      width: `${(solvedClinCount / 10) * 100}%`,
-                      background: "#c74b35"
-                    }}
-                  ></div>
-                </div>
-                <span>{solvedClinCount} из 10 кейсов освоено</span>
-              </div>
-            </div>
-
-            {/* Favorite Cases Section */}
-            {favorites.length > 0 && (
-              <section className="profile-section">
-                <h3>Избранные кейсы ({favorites.length})</h3>
-                <div className="cases-grid compact">
-                  {cases
-                    .filter((c) => favorites.includes(c.id))
-                    .map((c) => (
-                      <div key={c.id} className="case-card">
-                        <div className="case-card-header">
-                          <span className="case-index" style={{ background: c.accent }}>
-                            {c.index}
-                          </span>
-                          <button
-                            type="button"
-                            className="fav-btn active"
-                            onClick={(e) => toggleFavorite(c.id, e)}
-                          >
-                            ★
-                          </button>
-                        </div>
-                        <h4>{c.title}</h4>
-                        <span className="case-category-pill">{c.category}</span>
-                        <button
-                          type="button"
-                          className="card-action-btn"
-                          onClick={() => {
-                            setCurrentCaseId(c.id);
-                            navigateTo("case");
-                          }}
-                        >
-                          Решать →
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </section>
-            )}
-
-            {/* Attempts History */}
-            <section className="profile-section">
-              <div className="section-header-flex">
-                <h3>История решений ({attempts.length})</h3>
+            <div className="profile-history">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                <h2>История решений</h2>
                 {attempts.length > 0 && (
                   <button
                     type="button"
-                    className="text-button danger"
+                    className="text-link"
+                    style={{ fontSize: "12px", color: "var(--ochre)" }}
                     onClick={() => {
-                      if (window.confirm("Очистить всю историю решений?")) {
+                      if (window.confirm("Очистить всю историю попыток?")) {
                         localStorage.removeItem("psy-trainer-attempts-v2");
                         localStorage.removeItem("psy-trainer-attempts");
                         setAttempts([]);
@@ -1647,15 +1413,14 @@ export default function Page() {
               </div>
 
               {attempts.length > 0 ? (
-                <div className="attempts-table-wrap">
-                  <table className="attempts-table">
+                <div className="history-table-wrap">
+                  <table className="history-table">
                     <thead>
                       <tr>
                         <th>Кейс</th>
                         <th>Дата</th>
                         <th>Балл</th>
                         <th>Статус</th>
-                        <th>Действие</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1665,24 +1430,9 @@ export default function Page() {
                           <td>{att.date}</td>
                           <td><b>{att.score}</b> / 100</td>
                           <td>
-                            <span className={`status-pill ${att.passed ? "passed" : "retry"}`}>
-                              {att.passed ? "Сдан" : "Требует доработки"}
+                            <span className={`case-status ${att.passed ? "completed" : ""}`}>
+                              {att.passed ? "ЗАЧЁТ" : "ДОРАБОТКА"}
                             </span>
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="text-link"
-                              onClick={() => {
-                                setCurrentCaseId(att.caseId);
-                                if (att.answers && att.answers.length > 0) {
-                                  setAnswers(att.answers);
-                                }
-                                navigateTo("case");
-                              }}
-                            >
-                              Открыть →
-                            </button>
                           </td>
                         </tr>
                       ))}
@@ -1690,206 +1440,183 @@ export default function Page() {
                   </table>
                 </div>
               ) : (
-                <p className="empty-hint">Вы ещё не завершили ни одного кейса. Перейдите в каталог для начала практики!</p>
+                <p className="empty-hint">История пока пуста. Перейдите в каталог для начала тренировки.</p>
               )}
-            </section>
+            </div>
           </div>
-        </main>
+        </section>
       )}
 
       {/* VIEW: GUIDE */}
       {tab === "guide" && (
-        <main className="guide-view">
-          <div className="guide-container">
-            <span className="kicker">Методологические основы</span>
-            <h1>Гид по решению кейсов и клинико-организационному анализу</h1>
+        <section className="guide-page">
+          <div className="guide-hero">
+            <p className="kicker">Методика и правила</p>
+            <h1>Как работать с кейсом</h1>
             <p>
-              Решение практического кейса в психологии — это демонстрация логики рассуждения,
-              способности опираться на доказанные факты и проектировать этичные, безопасные интервенции.
+              Не ищите одну «правильную» фразу. Покажите порядок мышления, границы имеющихся данных и условия, при которых решение потребуется пересмотреть.
             </p>
-
-            <div className="guide-grid">
-              <div className="guide-card">
-                <h3>1. Разделение данных и допущений</h3>
-                <p>
-                  Никогда не начинайте с постановки диагноза или навешивания ярлыков («манипуляция»,
-                  «сопротивление», «токсичность»). Сначала зафиксируйте строго проверяемые факты:
-                  поведение, события, конкретные фразы, объективные метрики. Все интерпретации оформляйте
-                  как проверяемые рабочие гипотезы.
-                </p>
-              </div>
-
-              <div className="guide-card">
-                <h3>2. Анализ системного контекста</h3>
-                <p>
-                  Симптом или конфликт никогда не существуют в вакууме. В семейном консультировании
-                  учитывайте структуру взаимоотношений и явные/скрытые запросы участников. В организационном
-                  консалтинге — структуру власти, систему KPI, неформальные коалиции и психологическую
-                  безопасность среды.
-                </p>
-              </div>
-
-              <div className="guide-card">
-                <h3>3. Профессиональная этика и границы</h3>
-                <p>
-                  Чётко разграничивайте роли: оргконсультант не имеет права проводить психотерапию сотрудников;
-                  психолог подростка обязан соблюдать конфиденциальность и не может быть шпионом для родителей;
-                  руководитель не должен вторгаться в приватную жизнь подчинённых без их запроса.
-                </p>
-              </div>
-
-              <div className="guide-card">
-                <h3>4. Проектирование поддерживающей интервенции</h3>
-                <p>
-                  Решение должно быть поэтапным: от стабилизации безопасности и эмоционального контакта
-                  до постепенной трансформации ролей, регламентов и навыков. Всегда формулируйте
-                  критерии того, как вы поймёте, что интервенция сработала.
-                </p>
-              </div>
-            </div>
           </div>
-        </main>
+
+          <section className="method-section method-section-page">
+            <div className="method-grid">
+              <article>
+                <span>01</span>
+                <h3>Контекст и данные</h3>
+                <p>
+                  Отделите факты от домыслов. Что известно точно, что сообщают участники ситуации со своих слов, а что пока остаётся гипотезой?
+                </p>
+              </article>
+              <article>
+                <span>02</span>
+                <h3>Анализ запроса</h3>
+                <p>
+                  Не присваивайте человеку чужой запрос. Разделите явную жалобу, скрытую потребность и позиции разных сторон (руководитель, сотрудник, семья).
+                </p>
+              </article>
+              <article>
+                <span>03</span>
+                <h3>Риски и безопасность</h3>
+                <p>
+                  Всегда оценивайте непосредственную угрозу жизни, здоровью или деструктивному поведению. В оргконсалтинге — системные риски сбоев и саботажа.
+                </p>
+              </article>
+              <article>
+                <span>04</span>
+                <h3>Тактика и маршрут</h3>
+                <p>
+                  Сформулируйте последовательный план действий с ясными границами вашей роли и критериями того, как будет оцениваться прогресс.
+                </p>
+              </article>
+            </div>
+          </section>
+        </section>
       )}
 
       {/* VIEW: KNOWLEDGE */}
       {tab === "knowledge" && (
-        <main className="knowledge-view">
-          <div className="knowledge-container">
-            <span className="kicker">Теоретический фундамент</span>
-            <h1>База знаний: модели и концепции</h1>
-            <p>Ключевые теоретические конструкты, лежащие в основе анализа учебных кейсов тренажёра.</p>
-
-            <div className="knowledge-list">
-              <div className="knowledge-item">
-                <h3>Психологическая безопасность (Amy Edmondson)</h3>
-                <p>
-                  Уверенность членов команды в том, что группа безопасна для межличностного риска:
-                  сообщения об ошибках, предложения непопулярных идей или критики процессов не повлекут
-                  наказания, насмешек или остракизма. Является ключевым фактором предотвращения производственного
-                  брака и аварий.
-                </p>
-              </div>
-
-              <div className="knowledge-item">
-                <h3>Модель переходов Уильяма Бриджеса (Bridges Transition Model)</h3>
-                <p>
-                  Изменение — это внешнее событие (смена ПО, сокращение, ребрендинг). Переход — это внутренний
-                  психологический процесс, проходящий через 3 стадии: Завершение (проживание утраты прежнего статуса),
-                  Нейтральная зона (тревога, хаос и эксперименты) и Новое начало (интеграция новой идентичности).
-                </p>
-              </div>
-
-              <div className="knowledge-item">
-                <h3>Синдром выживших (Survivor Syndrome)</h3>
-                <p>
-                  Комплекс стрессовых реакций у сотрудников, оставшихся в компании после массовых сокращений:
-                  чувство вины перед уволенными коллегами, страх следующей волны, резкое падение доверия к топ-менеджменту
-                  и уход в защитное «тихое увольнение».
-                </p>
-              </div>
-
-              <div className="knowledge-item">
-                <h3>Оценка суицидального риска и самоповреждения (NICE & WHO)</h3>
-                <p>
-                  Прямое, спокойное и безоценочное прояснение суицидальных мыслей, намерений, плана и доступа к средствам.
-                  Составление плана безопасности (Safety Plan), определение контактов экстренной помощи и недопустимость
-                  сокрытия непосредственной угрозы жизни ради ложно понятой конфиденциальности.
-                </p>
-              </div>
+        <section className="knowledge-page">
+          <div className="page-hero knowledge-hero">
+            <div>
+              <p className="kicker">Учебные ориентиры</p>
+              <h1>База знаний</h1>
+              <p>
+                Краткие вводные по ключевым теоретическим моделям и концептам тренажёра: на что обратить внимание и каких решений следует избегать.
+              </p>
             </div>
           </div>
-        </main>
+
+          <div className="knowledge-grid">
+            <article className="knowledge-card">
+              <p className="kicker">Организационная психология</p>
+              <h3>Психологическая безопасность (Amy Edmondson)</h3>
+              <p>
+                Уверенность команды в том, что сообщение об ошибках или критика процессов не повлекут наказания. Главный фактор предотвращения скрытого брака на производстве.
+              </p>
+            </article>
+
+            <article className="knowledge-card">
+              <p className="kicker">Управление изменениями</p>
+              <h3>Модель переходов Уильяма Бриджеса</h3>
+              <p>
+                Внутренний психологический процесс перестройки: Завершение (проживание утраты прежнего), Нейтральная зона (тревога и поиск) и Новое начало.
+              </p>
+            </article>
+
+            <article className="knowledge-card">
+              <p className="kicker">Стресс и мотивация</p>
+              <h3>Синдром выживших (Survivor Syndrome)</h3>
+              <p>
+                Вина и страх у оставшихся после сокращений сотрудников. Требует прозрачного диалога о будущем, а не принуждения к радости.
+              </p>
+            </article>
+
+            <article className="knowledge-card">
+              <p className="kicker">Клиническое консультирование</p>
+              <h3>Оценка суицидального риска (NICE & WHO)</h3>
+              <p>
+                Прямое, спокойное выяснение мыслей, намерений, плана и доступа к средствам. Составление плана безопасности и определение границ тайны.
+              </p>
+            </article>
+          </div>
+        </section>
       )}
 
       {/* VIEW: SOURCES */}
       {tab === "sources" && (
-        <main className="sources-view">
-          <div className="sources-container">
-            <span className="kicker">Научно-методическая база</span>
-            <h1>Источники, стандарты и клинические руководства</h1>
+        <section className="sources-page">
+          <div className="sources-hero">
+            <p className="kicker">Открытая методология</p>
+            <h1>Реестр источников</h1>
             <p>
-              База регламентов и доказательных источников, на которые опираются кейсы и рубрики оценки:
-              ВОЗ, NICE, РПО, APA, ISO, Harvard Business Review.
+              Здесь собраны 33 документа, на которых построены вводные данные, рубрики и ориентиры ответов: ВОЗ, NICE, РПО, APA, ISO и CIPD.
             </p>
+          </div>
 
-            <div className="sources-filter-row">
-              <div className="sources-search-wrap">
-                <input
-                  type="text"
-                  className="catalog-search-input"
-                  placeholder="Поиск по организации, названию или фокусу источника…"
-                  value={sourceSearch}
-                  onChange={(e) => setSourceSearch(e.target.value)}
-                />
-              </div>
-
-              <div className="sources-lang-toggle">
-                <button
-                  type="button"
-                  className={`toggle-sm-btn ${sourceLang === "all" ? "active" : ""}`}
-                  onClick={() => setSourceLang("all")}
-                >
-                  Все ({sources.length})
-                </button>
-                <button
-                  type="button"
-                  className={`toggle-sm-btn ${sourceLang === "ru" ? "active" : ""}`}
-                  onClick={() => setSourceLang("ru")}
-                >
-                  На русском
-                </button>
-                <button
-                  type="button"
-                  className={`toggle-sm-btn ${sourceLang === "en" ? "active" : ""}`}
-                  onClick={() => setSourceLang("en")}
-                >
-                  На английском
-                </button>
-              </div>
-            </div>
-
-            <div className="sources-list">
-              {filteredSources.map((s, i) => (
-                <div key={s.id || i} className="source-card">
-                  <div className="source-card-top">
-                    <span className="source-org-badge">{s.org}</span>
-                    <span className="source-year">{s.year}</span>
-                    <span className="source-lang-pill">{s.language}</span>
-                  </div>
-                  <h3>{s.title}</h3>
-                  <p>{s.focus}</p>
-                  {s.url && (
-                    <a
-                      href={s.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="source-ext-link"
-                    >
-                      Официальный первоисточник ↗
-                    </a>
-                  )}
-                </div>
-              ))}
+          <div style={{ padding: "0 clamp(20px, 4vw, 40px)", marginBottom: "24px" }}>
+            <div className="filter-row" style={{ justifyContent: "flex-start" }}>
+              <button
+                type="button"
+                className={sourceLang === "all" ? "selected" : ""}
+                onClick={() => setSourceLang("all")}
+              >
+                Все ({sources.length})
+              </button>
+              <button
+                type="button"
+                className={sourceLang === "ru" ? "selected" : ""}
+                onClick={() => setSourceLang("ru")}
+              >
+                На русском
+              </button>
+              <button
+                type="button"
+                className={sourceLang === "en" ? "selected" : ""}
+                onClick={() => setSourceLang("en")}
+              >
+                На английском
+              </button>
             </div>
           </div>
-        </main>
+
+          <div className="source-list">
+            {filteredSources.map((s, idx) => (
+              <a
+                key={s.id || idx}
+                href={s.url}
+                target="_blank"
+                rel="noreferrer"
+                className="source-card"
+              >
+                <span className="source-number">{String(idx + 1).padStart(2, "0")}</span>
+                <div>
+                  <small>
+                    {s.org} · {s.year} {s.language === "RU" ? "· на русском" : ""}
+                  </small>
+                  <h3>{s.title}</h3>
+                  <p>{s.focus}</p>
+                </div>
+                <i>↗</i>
+              </a>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Global Footer */}
       <footer className="site-footer">
         <div className="footer-content">
           <div className="footer-left">
-            <b>Тренажёр диагностического и клинического мышления</b>
+            <b>Тренажёр для психологов</b>
             <p>
-              Научный сектор психологии ТФ МГУ • Комплексная подготовка психологов-консультантов и
-              организационных психологов.
+              Практикум решения психологических и организационных кейсов.
             </p>
           </div>
           <div className="footer-right">
-            <span>Всего кейсов: 37 • Источников: 33</span>
+            <span>Всего кейсов: {cases.length} · Источников: {sources.length}</span>
           </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
